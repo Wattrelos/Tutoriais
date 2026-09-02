@@ -150,3 +150,49 @@ sudo apt install ./docker-desktop-amd64.deb
 | **Consumo de Recursos** | Mínimo (~50MB RAM) | Alto (Roda VM QEMU/KVM) |
 | **Requisito KVM** | Não | Sim |
 | **Ideal para** | Servidores, Linux nativo, máquinas com pouca RAM | Usuários acostumados com Windows/Mac e extensões Docker |
+
+
+# Signing in with Docker Desktop for Linux
+
+Docker Desktop for Linux relies on pass to store credentials in GPG-encrypted files. Before signing in to Docker Desktop with your Docker ID, you must initialize pass. Docker Desktop displays a warning if pass is not configured.
+
+    Generate a GPG key. You can initialize pass by using a gpg key. To generate a gpg key, run:
+
+ ```bash
+ gpg --generate-key
+```
+
+
+Enter your name and email once prompted.
+
+Once confirmed, GPG creates a key pair. Look for the pub line that contains your GPG ID, for example:
+
+```bash
+pubrsa3072 2022-03-31 [SC] [expires: 2024-03-30]
+ 3ABCD1234EF56G78
+uid          Molly <molly@example.com>
+```
+
+Copy the GPG ID and use it to initialize pass. For example
+
+ ```bash
+ pass init 3ABCD1234EF56G78
+```
+
+You should see output similar to:
+
+```bash
+    mkdir: created directory '/home/molly/.password-store/'
+    Password store initialized for <generated_gpg-id_public_key>
+```
+
+Once you initialize pass, you can sign in and pull your private images. When Docker CLI or Docker Desktop use credentials, a user prompt may pop up for the password you set during the GPG key generation.
+
+```bash
+docker pull molly/privateimage
+Using default tag: latest
+latest: Pulling from molly/privateimage
+3b9cc81c3203: Pull complete 
+Digest: sha256:3c6b73ce467f04d4897d7a7439782721fd28ec9bf62ea2ad9e81a5fb7fb3ff96
+Status: Downloaded newer image for molly/privateimage:latest
+docker.io/molly/privateimage:latest
