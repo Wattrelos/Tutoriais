@@ -1,4 +1,7 @@
+# Instalação e Integração do Redis no Debian 13
+
 Para instalar o Redis e integrá-lo ao PHP 8.4 com Apache2 no Debian 13 (Trixie), siga o passo a passo abaixo executando os comandos no seu terminal:
+
 ## 1. Instalar o servidor do Redis
 Atualize os repositórios do sistema e instale o pacote oficial: 
 
