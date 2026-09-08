@@ -239,13 +239,14 @@ Crie o arquivo `/usr/local/bin/entrar-container.sh`:
 ```bash
 sudo tee /usr/local/bin/entrar-container.sh << 'EOF'
 #!/bin/bash
-CONTAINER="$USER"
+# Captura o usuário real que invocou o sudo (ex: aluno01)
+CONTAINER="${SUDO_USER:-$USER}"
 
 # Garante que o container esteja iniciado
 incus start "$CONTAINER" 2>/dev/null
 
-# Transfere a sessão diretamente para o root do container
-exec incus exec "$CONTAINER" -- /bin/bash --login
+# Transfere a sessão exportando o SHELL explicitamente para evitar falhas em emuladores como o Konsole
+exec incus exec "$CONTAINER" --env SHELL=/bin/bash -- /bin/bash --login
 EOF
 
 sudo chmod 755 /usr/local/bin/entrar-container.sh
@@ -272,6 +273,9 @@ echo "exit" | sudo tee -a /home/aluno01/.bashrc
 ```
 
 > **Resultado:** Quando o `aluno01` faz login no Debian do laboratório, o terminal cai diretamente dentro do seu container com `root`. Ao digitar `exit`, ele é desconectado da máquina física. Ele não tem acesso ao sistema de arquivos do host!
+
+> [!TIP]
+> **Dica para Testes e Diagnóstico:** Se o terminal fechar instantaneamente durante os testes iniciais, comente temporariamente a linha `exit` em `/home/aluno01/.bashrc` (`sudo sed -i 's/^exit/#exit/' /home/aluno01/.bashrc`) para visualizar eventuais mensagens de erro de inicialização. Para mais detalhes e soluções de problemas conhecidos com emuladores de terminal (Konsole, xterm), consulte o guia [Incus-troubleshooting.md](Incus-troubleshooting.md).
 
 ---
 

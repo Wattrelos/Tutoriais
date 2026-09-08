@@ -1,6 +1,8 @@
-# Troubleshooting
+# Guia de Troubleshooting: Containers Incus para Laboratórios
 
-## Diagnóstico: Por que o erro acontece?
+## Problema 1: Konsole não abre ou exibe "Program to run not set"
+
+### Diagnóstico: Por que o erro acontece?
 
 1. **`Program to run not set`:**
    No código-fonte do Konsole (`Session.cpp`), ao iniciar uma nova aba/janela, ele procura qual comando deve rodar:
@@ -26,7 +28,7 @@ No arquivo [/usr/local/bin/entrar-container.sh](file:///var/www/html/tutoriais/c
 
 ```bash
 #!/bin/bash
-CONTAINER="$USER"
+CONTAINER="${SUDO_USER:-$USER}"
 
 # Garante que o container esteja iniciado
 incus start "$CONTAINER" 2>/dev/null
@@ -95,9 +97,10 @@ EOF
 ```
 
 ---
-# Troubleshooting
 
-### Por que agora o `xterm` e o `konsole` abrem e fecham na hora?
+## Problema 2: O xterm e o Konsole abrem e fecham imediatamente
+
+### Diagnóstico: Por que o fechamento ocorre?
 
 O fechamento imediato é causado pela combinação de duas coisas:
 
@@ -168,7 +171,3 @@ sudo sed -i 's/^exit/#exit/' /home/aluno01/.bashrc
 ```
 
 Assim, se o script falhar, a janela do terminal permanecerá aberta exibindo exatamente a mensagem de erro do Incus. Quando tudo estiver funcionando, você pode descomentar o `exit`.
-
----
-
-> Se desejar, posso atualizar o arquivo [Incus -LXD-install.md](file:///var/www/html/tutoriais/containers/Incus%20-LXD-install.md#L240-L249) para que o script já use `${SUDO_USER:-$USER}` e `--env SHELL=/bin/bash` por padrão no tutorial.
