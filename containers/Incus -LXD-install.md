@@ -166,25 +166,7 @@ Com a partição dedicada pronta (`/dev/sda4`), inicializamos o Incus apontando 
 sudo incus admin init
 ```
 
-### Respostas recomendadas durante o assistente:
 
-```text
-Would you like to use Incus clustering? (default: no): no
-Do you want to configure a new storage pool? (default: yes): yes
-Name of the new storage pool [default: default]: default
-Name of the storage backend to use (btrfs, dir, lvm, zfs) [default: btrfs]: btrfs
-Create a new BTRFS pool? (default: yes): yes
-Would you like to use an existing empty block device (e.g. a partition)? (default: no): yes
-Path to the existing block device: /dev/sda4
-Would you like to connect to a MAAS server? (default: no): no
-Would you like to create a new local network bridge? (default: yes): yes
-What should the new bridge be named? [default: incusbr0]: incusbr0
-What IPv4 address should be used? (CIDR subnet, "auto" or "none") [default: auto]: auto
-What IPv6 address should be used? (CIDR subnet, "auto" or "none") [default: auto]: none
-Would you like the Incus server to be available over the network? (default: no): no
-Would you like stale cached images to be updated automatically? (default: yes): yes
-Would you like a YAML "init" preseed to be printed? (default: no): no
-```
 
 > **Atenção:** Em máquinas com SSD NVMe, substitua `/dev/sda4` pelo identificador correto (ex: `/dev/nvme0n1p4`). Use o comando `lsblk` para confirmar o nome da partição antes de executar o assistente.
 
@@ -203,7 +185,7 @@ Em vez de baixar e configurar um container do zero para cada aluno, criamos uma 
 
 ```bash
 # 1. Cria e inicializa um container base Debian
-incus launch images:debian/12 modelo-lab
+incus launch images:debian/13 modelo-lab
 
 # 2. Acessa o shell do container modelo
 incus exec modelo-lab -- bash

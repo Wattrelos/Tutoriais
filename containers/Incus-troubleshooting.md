@@ -93,3 +93,82 @@ cat << 'EOF' > ~/.config/konsolerc
 DefaultProfile=Default.profile
 EOF
 ```
+
+---
+# Troubleshooting
+
+### Por que agora o `xterm` e o `konsole` abrem e fecham na hora?
+
+O fechamento imediato é causado pela combinação de duas coisas:
+
+1. **O comando `exit` no `~/.bashrc`:**  
+   No passo 4 da Seção 7 do tutorial, foi configurado:
+   ```bash
+   echo "sudo /usr/local/bin/entrar-container.sh" | sudo tee -a /home/aluno01/.bashrc
+   echo "exit" | sudo tee -a /home/aluno01/.bashrc
+   ```
+   Toda vez que você abre o terminal, o bash lê o `.bashrc`. Se o script `entrar-container.sh` encontrar **qualquer erro e for abortado**, o bash passa imediatamente para a linha seguinte (`exit`), **fechando a janela em milissegundos sem deixar você ler o erro**.
+
+2. **O script `/usr/local/bin/entrar-container.sh` está falhando:**  
+   Existem dois motivos principais para ele estar falhando:
+
+   * **Causa principal (O bug do `$USER` no `sudo`):**  
+     No script original consta:
+     ```bash
+     CONTAINER="$USER"
+     ```
+     Quando o script é executado via `sudo`, o Linux redefine `$USER` para **`root`**!  
+     O script tenta executar `incus exec root ...`. Como **não existe container chamado `root`** (o container chama-se `aluno01`), o Incus retorna `Error: Instance not found` e encerra. Em seguida, o `exit` do `.bashrc` fecha a janela.
+
+   * **O container ainda não existe ou não foi iniciado:**  
+     Se o container com o nome do usuário (`aluno01`) não foi clonado a partir da imagem modelo (`incus copy modelo-lab aluno01`), o Incus também falha.
+
+---
+
+### Como corrigir
+
+#### 1. Corrigir o script `/usr/local/bin/entrar-container.sh` no Host
+
+Use a variável `${SUDO_USER:-$USER}` (que captura o usuário real que invocou o `sudo`) e já adicione a flag `--env SHELL=/bin/bash`:
+
+```bash
+sudo tee /usr/local/bin/entrar-container.sh << 'EOF'
+#!/bin/bash
+# Captura o nome do aluno que executou o sudo (ex: aluno01)
+CONTAINER="${SUDO_USER:-$USER}"
+
+# Garante que o container esteja iniciado
+incus start "$CONTAINER" 2>/dev/null
+
+# Transfere a sessão exportando o SHELL para o container
+exec incus exec "$CONTAINER" --env SHELL=/bin/bash -- /bin/bash --login
+EOF
+
+sudo chmod 755 /usr/local/bin/entrar-container.sh
+```
+
+#### 2. Confirmar se o container do aluno existe
+
+Certifique-se de que o container com o mesmo nome do usuário do host foi criado:
+
+```bash
+# Como usuário administrador no host:
+incus list
+# Se aluno01 não existir, crie-o a partir do modelo:
+incus copy modelo-lab aluno01
+incus start aluno01
+```
+
+#### 3. Dica para ver o erro caso a janela volte a fechar
+
+Para conseguir ver a mensagem de erro sem a janela fechar na sua cara, comente temporariamente o `exit` do `.bashrc` do aluno:
+
+```bash
+sudo sed -i 's/^exit/#exit/' /home/aluno01/.bashrc
+```
+
+Assim, se o script falhar, a janela do terminal permanecerá aberta exibindo exatamente a mensagem de erro do Incus. Quando tudo estiver funcionando, você pode descomentar o `exit`.
+
+---
+
+> Se desejar, posso atualizar o arquivo [Incus -LXD-install.md](file:///var/www/html/tutoriais/containers/Incus%20-LXD-install.md#L240-L249) para que o script já use `${SUDO_USER:-$USER}` e `--env SHELL=/bin/bash` por padrão no tutorial.
