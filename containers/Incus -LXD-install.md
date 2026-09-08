@@ -141,6 +141,7 @@ curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
 
 # 3. Adicione o repositório estável do Incus
 sudo sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+## 3. Decisão
 Enabled: yes
 Types: deb
 URIs: https://pkgs.zabbly.com/incus/stable
