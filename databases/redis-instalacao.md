@@ -29,7 +29,32 @@ sudo systemctl restart apache2
 
 ## 4. Verificar se a instalação funcionou
 Para ter certeza de que o Apache e o PHP carregaram o módulo do Redis com sucesso, execute o comando abaixo no terminal: 
-
+```bash
 php -m | grep redis
-
+```
 Se a palavra redis for exibida na tela, a instalação foi concluída perfeitamente.
+
+
+No Debian 13, a forma padrão e recomendada para parar o Redis é utilizando o gerenciador de serviços do sistema (systemd). 
+Execute o comando abaixo no terminal:
+```bash
+sudo systemctl stop redis-server
+```
+
+
+## Outras formas de gerenciar o Redis
+Se você precisa apenas de uma interrupção temporária, quer desativar a inicialização automática ou forçar o desligamento, utilize as opções abaixo:
+
+* Impedir que ele inicie junto com o sistema:
+```bash
+sudo systemctl disable redis-server
+```
+* Parar de forma segura via linha de comando do Redis (Redis CLI):
+Se preferir salvar os dados antes de encerrar diretamente pelo console do Redis:
+```bash
+redis-cli shutdown
+```
+* Verificar se o serviço realmente parou:
+```bash
+sudo systemctl status redis-server
+```
