@@ -95,26 +95,33 @@ systemctl enable xrdp
 
 ---
 
+
+
+
+
+
 ### 3.4. Criar o Usuário Padrão do Aluno
 Crie a conta de usuário padrão que o aluno utilizará na interface gráfica:
 
+> **Tips:** Para mudar o seu script de aluno para joao, você só precisa substituir todas as ocorrências do termo antigo pelo novo.
+> A melhor prática para fazer isso de forma limpa e evitar esquecer alguma linha é definir uma variável no início do script. Assim, se amanhã você quiser mudar para maria ou pedro, só precisará alterar uma única linha.
+> Aqui está o seu script adaptado com uma variável chamada USUARIO:
 ```bash
-# Cria o usuário 'aluno' com pasta home e shell bash
-useradd -m -s /bin/bash aluno
-
-# Define uma senha padrão didática (ex: aluno123)
-echo "aluno:aluno123" | chpasswd
-
-# Adiciona o aluno ao grupo sudo (para poder usar apt install livremente)
-usermod -aG sudo aluno
-
-# Permite que o aluno use sudo sem exigir senha dentro do seu container
-echo "aluno ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-aluno-init
-chmod 0440 /etc/sudoers.d/90-aluno-init
-
+#!/bin/bash
+# 1. Defina aqui o nome do usuário que deseja criar
+USUARIO="aluno"
+# Cria o usuário com pasta home e shell bash
+useradd -m -s /bin/bash "$USUARIO"
+# Define uma senha padrão didática (ex: joao123)
+echo "${USUARIO}:${USUARIO}123" | chpasswd
+# Adiciona o usuário ao grupo sudo (para poder usar apt install livremente)
+usermod -aG sudo "$USUARIO"
+# Permite que o usuário use sudo sem exigir senha dentro do seu container
+echo "$USUARIO ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/90-${USUARIO}-init"
+chmod 0440 "/etc/sudoers.d/90-${USUARIO}-init"
 # Garante o arquivo .xsession na pasta do usuário
-cp /etc/skel/.xsession /home/aluno/.xsession
-chown aluno:aluno /home/aluno/.xsession
+cp /etc/skel/.xsession "/home/${USUARIO}/.xsession"
+chown "${USUARIO}:${USUARIO}" "/home/${USUARIO}/.xsession"
 ```
 
 ---
@@ -143,16 +150,19 @@ incus publish modelo-desktop --alias template-desktop-lab description="Modelo De
 Com a imagem modelo pronta, provisionar novos ambientes leva menos de 2 segundos graças ao Btrfs Copy-on-Write.
 
 ### 4.1. Criar Containers para Dois Alunos de Exemplo
+> Obs.: Como cada aluno acessará a máquina um de cada vez, não há necessidade de impor limites de CPU e memória. Caso contrário, bastaria alterar as variáveis CPU e MEMÓRIA abaixo para cada aluno.  
 
 ```bash
 # Cria o container para o aluno João (Turno Manhã)
 incus copy modelo-desktop aluno-joao
-incus config set aluno-joao limits.cpu=2 limits.memory=3GiB
+incus config set aluno-joao 
+# incus set limits.cpu=2 limits.memory=3GiB
 incus start aluno-joao
 
 # Cria o container para o aluno Maria (Turno Noite)
 incus copy modelo-desktop aluno-maria
-incus config set aluno-maria limits.cpu=2 limits.memory=3GiB
+incus config set aluno-maria
+# incus set limits.cpu=2 limits.memory=3GiB
 incus start aluno-maria
 ```
 
