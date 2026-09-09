@@ -22,9 +22,11 @@ A base foi estruturada para permitir que um ambiente de desenvolvimento completo
 | 📄 [Importar Repositórios do GitHub para Forgejo](git/importar-issues-github-para-forgejo.md) | Migração web completa incluindo commits, branches, issues, PRs e labels. |
 | 📄 [Exportar Issues do GitHub para Markdown (gh2md)](git/gh2md.md) | Scripts e automações para baixar issues do GitHub em arquivos `.md`. |
 
-### 🐳 Containers & Docker
+### 🐳 Containers, Docker & Incus
 | Tutorial | Descrição |
 | :--- | :--- |
+| 📄 [Instalação do Incus (Containers de Sistema)](containers/Incus%20-LXD-install.md) | Proposta e guia completo de implantação do Incus no Debian 13 com pool Btrfs para laboratórios. |
+| 📄 [Ambientes Gráficos por Aluno com Incus](containers/incus-desktop-grafico-alunos.md) | Desktops XFCE4 individuais com terminal, sem conflitos de portas (Apache2 vs Nginx) e login automatizado. |
 | 📄 [Instalação do Docker](containers/docker-instalacao.md) | Configuração do Docker CE através do repositório oficial no Debian 13. |
 | 📄 [Baixando Imagens no Docker Desktop](containers/docker-baixando-imagens.md) | Como buscar e efetuar pull de imagens pela interface visual e busca rápida. |
 
