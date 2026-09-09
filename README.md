@@ -27,6 +27,7 @@ A base foi estruturada para permitir que um ambiente de desenvolvimento completo
 | :--- | :--- |
 | 📄 [Instalação do Incus (Containers de Sistema)](containers/Incus%20-LXD-install.md) | Proposta e guia completo de implantação do Incus no Debian 13 com pool Btrfs para laboratórios. |
 | 📄 [Ambientes Gráficos por Aluno com Incus](containers/incus-desktop-grafico-alunos.md) | Desktops XFCE4 individuais com terminal, sem conflitos de portas (Apache2 vs Nginx) e login automatizado. |
+| 📄 [Automação de Login no SDDM com Incus](containers/Incus-automatizando-login-sddm.md) | Integração com SDDM e FreeRDP para login direto no desktop do container e seletor gráfico de alunos. |
 | 📄 [Instalação do Docker](containers/docker-instalacao.md) | Configuração do Docker CE através do repositório oficial no Debian 13. |
 | 📄 [Baixando Imagens no Docker Desktop](containers/docker-baixando-imagens.md) | Como buscar e efetuar pull de imagens pela interface visual e busca rápida. |
 

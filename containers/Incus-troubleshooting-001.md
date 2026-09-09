@@ -1,4 +1,4 @@
-# Guia de Troubleshooting: Containers Incus para Laboratórios
+# Troubleshooting 001
 
 ## Problema 1: Konsole não abre ou exibe "Program to run not set"
 
