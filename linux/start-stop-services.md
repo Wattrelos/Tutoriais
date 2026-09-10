@@ -43,3 +43,15 @@ sudo systemctl restart apache2
 sudo systemctl restart mysql
 sudo systemctl restart ufw
 ```
+
+
+## Desabilitar um lista de serviços
+```bash
+sudo systemctl disable apache2 mysql RebbitMQ Redis
+```
+
+## Listar os serviços em execução
+```bash
+sudo systemctl list-units --type=service
+```
+
