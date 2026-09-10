@@ -1,71 +1,98 @@
-# Ambientes Gráficos Isolados por Aluno com Incus (Desktop + Terminal)
+# Ambientes Gráficos Isolados por Aluno com Incus (KDE Plasma Wayland + Autologin)
 
 ---
 
 ## 1. Visão Geral e Propósito
 
-Em laboratórios acadêmicos compartilhados por múltiplos turnos e turmas, o modelo tradicional de contas multiusuário no mesmo sistema operacional cria conflitos insolúveis de portas e dependências. Se um aluno instala e ativa o **Apache2** na porta 80, o colega do turno seguinte não consegue subir o **Nginx** na mesma porta (`Address already in use`), além do risco constante de arquivos e bibliotecas em `/etc/` ou `/usr/` serem sobrescritos.
+Em laboratórios acadêmicos compartilhados por múltiplos turnos e turmas, o modelo tradicional de contas multiusuário compartilhando o mesmo sistema operacional cria conflitos insolúveis de portas e dependências. Se um aluno instala e ativa o **Apache2** na porta 80, o colega do turno seguinte não consegue subir o **Nginx** na mesma porta (`Address already in use`), além do risco constante de arquivos de projetos, bibliotecas em `/usr/` ou configurações em `/etc/` serem sobrescritos.
 
-Com o **Incus**, cada aluno recebe um **Container de Sistema completo**, com sua própria interface gráfica leve (**XFCE4**), terminal nativo, permissão de `root`, endereço IP privativo e pilha de rede exclusiva.
-
-### O Resultado para o Laboratório:
-* **Isolamento de Serviços:** O Aluno A roda Apache2 na porta 80, o Aluno B roda Nginx na porta 80 e o Aluno C roda uma API Node.js na porta 3000, sem nenhuma colisão.
-* **Experiência de Computador Físico:** Ao sentar na máquina, o aluno tem acesso a uma área de trabalho completa com navegador, terminal gráfico e editor de código.
-* **Uso Inteligente de Recursos:** Como há apenas um aluno por máquina física em cada horário, apenas o container daquele aluno permanece ativo, aproveitando até 100% da RAM e CPU disponíveis da máquina real.
-* **Economia de Armazenamento:** Graças ao **Btrfs com Copy-on-Write (CoW)**, 30 containers clonados de um modelo base compartilham os mesmos blocos de disco, consumindo espaço apenas para os arquivos que cada aluno criar ou modificar.
+### O Novo Cenário do Laboratório:
+* **Uma Instância Isolada por Aluno:** Cada estudante possui seu próprio ambiente isolado rodando localmente na máquina física do laboratório.
+* **Interface Gráfica Moderna (KDE Plasma em Wayland):** O aluno tem acesso a um desktop gráfico completo, moderno e fluido com **KDE Plasma 6 / 5.27** rodando nativamente sobre **Wayland**.
+* **Aproveitamento Total do Hardware:** Como há apenas um estudante por computador físico em cada horário, a instância daquele aluno pode usufruir de até 100% da CPU, memória RAM e aceleração gráfica da máquina real.
+* **Autologin Transparente:** O aluno digita seu usuário e senha no gerenciador de login do computador físico (**SDDM**). Ao carregar o ambiente do aluno, o login na interface gráfica KDE Wayland é automático (**autologin**), sem que ele precise redigitar senhas.
+* **Desligamento e Liberação Automática de Recursos:** Ao terminar a aula, o aluno simplesmente clica em "Encerrar Sessão" ou "Desligar" pelo próprio menu do KDE. O ambiente é desligado no Incus, liberando imediatamente toda a memória RAM da máquina física e retornando o computador para a tela de login do SDDM, pronto para o próximo turno.
 
 ---
 
-## 2. Comparativo de Arquitetura
+## 2. Decisão de Arquitetura: Por que Incus VM (`--vm`) para Wayland?
 
-| Critério | Contas no Host Físico (Linux Tradicional) | Máquinas Virtuais Clássicas (VirtualBox) | Containers de Sistema Incus com GUI |
+O **Incus** oferece suporte tanto a **Containers de Sistema (LXC)** quanto a **Máquinas Virtuais KVM (`--vm`)**. Para este cenário específico com **KDE Plasma em Wayland nativo**, a escolha técnica ideal é a **Incus VM**:
+
+| Critério | Container Incus (LXC) com XRDP | Máquina Virtual Convencional (VirtualBox) | Incus VM com KDE Wayland (Esta Solução) |
 | :--- | :--- | :--- | :--- |
-| **Pilha de Rede** | Compartilhada (1 IP, portas disputadas) | Isolada (IP próprio via NAT/Bridge) | 🛡️ **Isolada nativamente (Network Namespace)** |
-| **Conflito Apache2 x Nginx** | ❌ **Impossível coexistir na porta 80** |  Não conflitam | ⚡ **Não conflitam (cada um no seu IP/localhost)** |
-| **Consumo de RAM em Idle** | ~500 MB (Desktop do Host) | ~2 GB a 4 GB por VM | ⚡ **~250 MB a 350 MB (XFCE + XRDP)** |
-| **Tempo de Abertura da GUI** | Imediato no login | ~40 a 60 segundos (boot da VM) | ⚡ **< 2 segundos** |
-| **Gerenciamento de Disco** | Partição compartilhada sem cotas simples | Arquivos `.vdi` pesados e estáticos | ⚡ **Btrfs CoW dinâmico e deduplicado** |
-| **Segurança para a TI** | Alunos podem quebrar o sistema host | Boa (isolamento KVM) | 🛡️ **Total (Containers Não-Privilegiados)** |
+| **Servidor Gráfico** | X11 clássico (XRDP não suporta Wayland nativo) | Emulado / Driver proprietário | ⚡ **Wayland nativo (KWin Wayland + virtio-gpu)** |
+| **Console Gráfico** | Depende de RDP em rede local | Janela pesada do VirtualBox | ⚡ **Nativo via SPICE (`incus console --type=vga`)** |
+| **Autologin Gráfico** | Complexo / Emulado via `.xsession` | Configuração manual em cada VM | ⚡ **Nativo via SDDM interno (`autologin.conf`)** |
+| **Tempo de Boot** | < 1 segundo | 40 a 60 segundos | ⚡ **~3 a 5 segundos** |
+| **Economia de Disco** | Btrfs Copy-on-Write (CoW) | Arquivos `.vdi` pesados e estáticos | ⚡ **Btrfs CoW (clones instantâneos em < 2s)** |
+| **Consumo no Host** | Host precisa de cliente FreeRDP | Host roda app pesada VirtualBox | 🛡️ **Host mínimo (apenas SDDM + virt-viewer)** |
+
+> [!NOTE]
+> O comando `incus console <instancia> --type=vga` (que renderiza a tela diretamente pelo protocolo SPICE em tela cheia) é fornecido pelo QEMU e pelo pacote `virt-viewer`, sendo suportado exclusivamente em instâncias criadas como **Máquina Virtual (`--vm`)**.
 
 ---
 
-## 3. Preparação da Imagem Modelo ("Golden Image")
+## 3. Preparação do Host Físico (Debian 13 Mínimo)
 
-Vamos criar uma única imagem modelo baseada no Debian 13 chamada `modelo-desktop`. Todas as contas dos alunos serão clones instantâneos desse modelo.
+O computador físico do laboratório não precisa de um desktop completo (como GNOME ou KDE) instalado no sistema operacional hospedeiro. Ele precisa apenas do servidor gráfico básico, do gerenciador de login SDDM e do visualizador SPICE (`virt-viewer`).
 
-### 3.1. Inicializar o Container Base
+### 3.1. Instalar os Pacotes Necessários no Host
+No Debian físico (como `root` ou via `sudo`):
+
+```bash
+sudo apt update
+sudo apt install -y xorg sddm virt-viewer incus zenity
+```
+
+### 3.2. Garantir que os Usuários Possam Controlar o Incus
+Para que o script de login do SDDM possa iniciar e abrir a VM do aluno sem exigir senha de root, adicione os usuários locais ou o usuário genérico ao grupo `incus-admin`:
+
+```bash
+sudo usermod -aG incus-admin aluno 2>/dev/null || true
+```
+
+---
+
+## 4. Construção da Imagem Modelo ("Golden Image")
+
+Criaremos uma única imagem modelo baseada no Debian 13 chamada `modelo-desktop`. Todos os ambientes dos alunos serão clones instantâneos desse modelo.
+
+### 4.1. Inicializar a VM Base no Incus
 Execute no terminal do host Debian físico:
 
 ```bash
-# Cria e inicia o container com Debian 13
-incus launch images:debian/13 modelo-desktop
+# Cria e inicializa a Máquina Virtual com Debian 13
+incus launch images:debian/13 modelo-desktop --vm -c limits.cpu=4 -c limits.memory=4GiB
 
-# Abre o terminal root dentro do container
+# Aguarda 10 segundos para a VM concluir a inicialização do agente interno
+sleep 10
+
+# Abre o terminal root dentro da VM
 incus exec modelo-desktop -- bash
 ```
 
 ---
 
-### 3.2. Instalar o Ambiente Gráfico XFCE4 e Utilitários
-Dentro do prompt do container `modelo-desktop`, execute os comandos abaixo para instalar a interface gráfica XFCE4 enxuta, o servidor de exibição XRDP e ferramentas essenciais:
+### 4.2. Instalar o KDE Plasma (Wayland) e Utilitários no Guest
+Dentro do prompt root da VM `modelo-desktop`, execute os comandos abaixo para instalar o KDE Plasma enxuto com Wayland, o SDDM e ferramentas de desenvolvimento:
 
 ```bash
 # 1. Atualizar repositórios
 apt update && apt upgrade -y
 
-# 2. Instalar XFCE4 básico, Xorg e XRDP (sem pacotes pesados desnecessários)
+# 2. Instalar KDE Plasma com suporte nativo a Wayland e o SDDM
 apt install --no-install-recommends -y \
-    xfce4 \
-    xfce4-terminal \
-    xrdp \
-    xorg \
-    dbus-x11 \
-    x11-xserver-utils
+    kde-plasma-desktop \
+    plasma-workspace-wayland \
+    sddm \
+    konsole \
+    dolphin \
+    kwrite
 
-# 3. Instalar aplicativos básicos de desenvolvimento e navegação
+# 3. Instalar utilitários essenciais de desenvolvimento e rede
 apt install -y \
     firefox-esr \
-    mousepad \
     sudo \
     curl \
     wget \
@@ -79,141 +106,113 @@ apt install -y \
 
 ---
 
-### 3.3. Configurar o XRDP e Sessão Padrão do XFCE
-Ainda dentro do container, configure o XRDP para iniciar o XFCE4 por padrão:
+### 4.3. Configurar o Autologin no SDDM da VM
+Como o aluno já terá digitado a senha na tela de login física da máquina (Host), a VM deve entrar imediatamente no ambiente gráfico sem solicitar a senha uma segunda vez.
+
+Ainda dentro da VM, configure o autologin do SDDM para a sessão `plasmawayland`:
 
 ```bash
-# Define o XFCE como gerenciador de janelas padrão para novos usuários
-echo "startxfce4" > /etc/skel/.xsession
+# Cria o diretório de configurações do SDDM
+mkdir -p /etc/sddm.conf.d
 
-# Ajusta permissões do serviço XRDP
-adduser xrdp ssl-cert 2>/dev/null || true
+# Configura o autologin para o usuário 'aluno' na sessão KDE Wayland
+cat << 'EOF' > /etc/sddm.conf.d/autologin.conf
+[General]
+DisplayServer=wayland
 
-# Habilita o serviço XRDP na inicialização do container
-systemctl enable xrdp
+[Autologin]
+User=aluno
+Session=plasmawayland
+Relogin=false
+EOF
 ```
 
 ---
 
+### 4.4. Criar a Conta Local do Aluno na VM
+Crie a conta de usuário padrão que o aluno utilizará na interface gráfica com privilégios administrativos via `sudo`:
 
-
-
-
-
-### 3.4. Criar o Usuário Padrão do Aluno
-Crie a conta de usuário padrão que o aluno utilizará na interface gráfica:
-
-> **Tips:** Para mudar o seu script de aluno para joao, você só precisa substituir todas as ocorrências do termo antigo pelo novo.
-> A melhor prática para fazer isso de forma limpa e evitar esquecer alguma linha é definir uma variável no início do script. Assim, se amanhã você quiser mudar para maria ou pedro, só precisará alterar uma única linha.
-> Aqui está o seu script adaptado com uma variável chamada USUARIO:
 ```bash
 #!/bin/bash
-# 1. Defina aqui o nome do usuário que deseja criar
 USUARIO="aluno"
-# Cria o usuário com pasta home e shell bash
+
+# Cria o usuário com pasta pessoal e shell bash
 useradd -m -s /bin/bash "$USUARIO"
-# Define uma senha padrão didática (ex: joao123)
+
+# Define uma senha padrão didática (ex: aluno123)
 echo "${USUARIO}:${USUARIO}123" | chpasswd
-# Adiciona o usuário ao grupo sudo (para poder usar apt install livremente)
-usermod -aG sudo "$USUARIO"
-# Permite que o usuário use sudo sem exigir senha dentro do seu container
-echo "$USUARIO ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/90-${USUARIO}-init"
+
+# Adiciona o usuário aos grupos de sudo, vídeo e áudio
+usermod -aG sudo,video,audio "$USUARIO"
+
+# Permite que o usuário utilize o sudo sem exigir senha dentro da VM
+cat << EOF > "/etc/sudoers.d/90-${USUARIO}-init"
+${USUARIO} ALL=(ALL) NOPASSWD:ALL
+EOF
 chmod 0440 "/etc/sudoers.d/90-${USUARIO}-init"
-# Garante o arquivo .xsession na pasta do usuário
-cp /etc/skel/.xsession "/home/${USUARIO}/.xsession"
-chown "${USUARIO}:${USUARIO}" "/home/${USUARIO}/.xsession"
+
+# Garante a permissão correta na home do usuário
+chown -R "${USUARIO}:${USUARIO}" "/home/${USUARIO}"
 ```
 
 ---
 
-### 3.5. Finalizar e Congelar a Imagem Base
-Saia do container para o host e crie a imagem de referência:
+### 4.5. Finalizar e Congelar a Imagem Base
+Saia da VM para o host físico e crie o snapshot de referência:
 
 ```bash
-# Sai do container
+# Sai da VM
 exit
 
-# Para o container modelo
+# Para a VM modelo de forma limpa
 incus stop modelo-desktop
 
 # Cria um snapshot imutável de referência
 incus snapshot create modelo-desktop base
 
-# (Opcional) Publica como imagem local reutilizável
-incus publish modelo-desktop --alias template-desktop-lab description="Modelo Debian 13 Desktop XFCE4 para Alunos"
+# (Opcional) Define a imagem com descrição no catálogo local
+incus publish modelo-desktop --alias template-desktop-kde description="Debian 13 KDE Plasma Wayland com Autologin"
 ```
 
 ---
 
-## 4. Provisionamento dos Ambientes dos Alunos
+## 5. Provisionamento dos Ambientes dos Alunos
 
-Com a imagem modelo pronta, provisionar novos ambientes leva menos de 2 segundos graças ao Btrfs Copy-on-Write.
+Com o modelo pronto em Btrfs CoW, provisionar novos ambientes para os alunos leva menos de 2 segundos.
 
-### 4.1. Criar Containers para Dois Alunos de Exemplo
-> Obs.: Como cada aluno acessará a máquina um de cada vez, não há necessidade de impor limites de CPU e memória. Caso contrário, bastaria alterar as variáveis CPU e MEMÓRIA abaixo para cada aluno.  
+### 5.1. Criar as VMs para os Alunos
+Execute no host físico:
 
 ```bash
-# Cria o container para o aluno João (Turno Manhã)
+# Cria o ambiente para o aluno João (Turno Manhã)
 incus copy modelo-desktop aluno-joao
-incus config set aluno-joao 
-# incus set limits.cpu=2 limits.memory=3GiB
 incus start aluno-joao
 
-# Cria o container para o aluno Maria (Turno Noite)
+# Cria o ambiente para a aluna Maria (Turno Noite)
 incus copy modelo-desktop aluno-maria
-incus config set aluno-maria
-# incus set limits.cpu=2 limits.memory=3GiB
 incus start aluno-maria
 ```
 
-### 4.2. Verificar IPs Privativos Gerados
+### 5.2. Verificar as Instâncias Ativas
 ```bash
-incus list -c n,s,4
+incus list -c n,s,t,4
 ```
 
 *Saída esperada:*
 ```text
-+-------------+---------+--------------------+
-|    NAME     | STATUS  |        IPV4        |
-+-------------+---------+--------------------+
-| aluno-joao  | RUNNING | 10.0.100.25 (eth0) |
-| aluno-maria | RUNNING | 10.0.100.26 (eth0) |
-+-------------+---------+--------------------+
++-------------+---------+-----------------+--------------------+
+|    NAME     | STATUS  |      TYPE       |        IPV4        |
++-------------+---------+-----------------+--------------------+
+| aluno-joao  | RUNNING | VIRTUAL-MACHINE | 10.0.100.25 (enp5s0)|
+| aluno-maria | RUNNING | VIRTUAL-MACHINE | 10.0.100.26 (enp5s0)|
++-------------+---------+-----------------+--------------------+
 ```
-
-Observe que cada container possui seu **próprio endereço IP privativo** na ponte de rede local (`incusbr0`).
 
 ---
 
-## 5. Como o Aluno Acessa a Interface Gráfica na Máquina Física
+## 6. Automação do Host: SDDM + Lançamento da VM em Tela Cheia
 
-Na máquina física do laboratório, precisamos apenas de um visualizador RDP ultraleve (**FreeRDP** ou **Remmina**) instalado no host Debian.
-
-### 5.1. Instalar o Cliente RDP no Host Físico
-No Debian da máquina física:
-
-```bash
-sudo apt install -y freerdp3-x11 remmina
-```
-
-### 5.2. Conexão Imediata via Linha de Comando
-Para abrir a interface gráfica do container em tela cheia na máquina física:
-
-```bash
-# Obtém dinamicamente o IP do container do aluno
-IP_ALUNO=$(incus list aluno-joao -c 4 --format csv | awk '{print $1}')
-
-# Conecta em tela cheia com áudio e área de transferência integrados
-xfreerdp /v:$IP_ALUNO /u:aluno /p:aluno123 /f /dynamic-resolution +clipboard /sound
-```
-
-> **Resultado Visual:** A tela do monitor físico é ocupada 100% pela área de trabalho do XFCE4 rodando de dentro do container do João. Ele tem menu Iniciar, barra de tarefas, área de trabalho, terminal gráfico e navegador.
-
----
-
-## 6. Automação do Ciclo de Vida: Login e Logout no Host
-
-Para que o aluno não precise digitar comandos do Incus, configuramos um script de sessão transparente.
+Para proporcionar a experiência transparente de computador físico, configuramos o host físico para executar a VM do aluno em tela cheia logo após o login no SDDM.
 
 ### 6.1. Script de Inicialização da Sessão (`/usr/local/bin/iniciar-ambiente-aluno.sh`)
 Crie este script no host físico:
@@ -222,46 +221,58 @@ Crie este script no host físico:
 sudo nano /usr/local/bin/iniciar-ambiente-aluno.sh
 ```
 
-Conteúdo do script:
+Cole o conteúdo:
 
 ```bash
 #!/bin/bash
-# Script de login transparente para laboratório com Incus
-# Recebe o nome do aluno como argumento ou usa o usuário logado no host
+# Script de login transparente para laboratório com Incus VM (KDE Wayland)
+LOG_FILE="/tmp/incus-session-${USER}.log"
+echo "=== Sessão iniciada para $USER em $(date) ===" > "$LOG_FILE"
 
-USUARIO_HOST="${1:-$USER}"
-CONTAINER="aluno-${USUARIO_HOST}"
+# 1. Se logar como usuário genérico 'aluno', permite selecionar a VM
+if [ "$USER" = "aluno" ]; then
+    LISTA=$(incus list -c n --format csv | grep "^aluno-" | sed "s/^aluno-//")
+    if [ -z "$LISTA" ]; then
+        zenity --error --text="Nenhum ambiente de aluno encontrado no Incus!"
+        exit 1
+    fi
+    ESCOLHA=$(echo "$LISTA" | zenity --list \
+        --title="Laboratório de Informática" \
+        --text="Selecione o seu ambiente de estudos:" \
+        --column="Aluno" \
+        --width=350 --height=400)
+    [ -z "$ESCOLHA" ] && exit 0
+    VM="aluno-${ESCOLHA}"
+else
+    # Se logar com conta nominal (ex: joao, maria), vai direto para a sua VM
+    VM="aluno-${USER}"
+fi
 
-# 1. Verifica se o container do aluno existe
-if ! incus info "$CONTAINER" >/dev/null 2>&1; then
-    zenity --error --text="Ambiente para $USUARIO_HOST não encontrado. Procure o professor ou TI."
+echo "Instância selecionada: $VM" >> "$LOG_FILE"
+
+# 2. Verifica se a VM existe
+if ! incus info "$VM" >/dev/null 2>&1; then
+    zenity --error --text="O ambiente '$VM' não existe. Procure o professor ou administrador do laboratório."
     exit 1
 fi
 
-# 2. Exibe notificação de inicialização
-zenity --info --title="Laboratório Virtual" --text="Iniciando seu ambiente dedicado...\nAguarde 2 segundos." --timeout=2 &
-
-# 3. Garante que o container esteja iniciado
-incus start "$CONTAINER" 2>/dev/null || true
-
-# 4. Aguarda a atribuição do endereço IP
-for i in {1..10}; do
-    IP=$(incus list "$CONTAINER" -c 4 --format csv | awk '{print $1}')
-    [ -n "$IP" ] && break
-    sleep 0.5
-done
-
-if [ -z "$IP" ]; then
-    zenity --error --text="Falha ao obter endereço de rede do ambiente."
-    exit 1
+# 3. Inicia a VM caso esteja desligada
+STATUS=$(incus list "^${VM}\$" -c s --format csv)
+if [ "$STATUS" != "RUNNING" ]; then
+    zenity --info --title="Laboratório Virtual" --text="Iniciando seu ambiente de trabalho...\nAguarde 3 segundos." --timeout=3 &
+    incus start "$VM"
 fi
 
-# 5. Lança o ambiente gráfico em tela cheia
-# Ao fechar a janela ou clicar em Sair do XFCE, a conexão encerra
-xfreerdp /v:"$IP" /u:aluno /p:aluno123 /f /dynamic-resolution +clipboard /sound
+# 4. Abre o console gráfico SPICE nativo em tela cheia
+# O comando 'incus console --type=vga' invoca o remote-viewer (virt-viewer) automaticamente
+echo "Lançando console VGA SPICE em tela cheia..." >> "$LOG_FILE"
+incus console "$VM" --type=vga --fullscreen >> "$LOG_FILE" 2>&1
 
-# 6. Ao encerrar a sessão, desliga o container para liberar toda a memória RAM
-incus stop "$CONTAINER"
+# 5. Ao encerrar a sessão (Logout ou Desligar dentro do KDE), garante o desligamento da VM para liberar a RAM
+echo "Encerrando instância $VM..." >> "$LOG_FILE"
+incus stop "$VM" 2>/dev/null || true
+echo "=== Sessão finalizada com sucesso ===" >> "$LOG_FILE"
+exit 0
 ```
 
 Torne o script executável:
@@ -271,28 +282,94 @@ sudo chmod +x /usr/local/bin/iniciar-ambiente-aluno.sh
 
 ---
 
-## 7. Demonstração Prática: O "Teste de Fogo" (Apache2 vs Nginx)
+### 6.2. Registrar a Sessão no SDDM do Host Físico
+Crie o descritor de sessão para o SDDM:
 
-Para validar que o isolamento é absoluto e elimina qualquer conflito de serviços de rede:
+```bash
+sudo nano /usr/share/xsessions/incus-aluno.desktop
+```
 
-### Cenário 1: Aluno João instala o Apache2 (Turno da Manhã)
-1. João inicia seu container `aluno-joao`.
-2. No terminal gráfico do XFCE, ele digita:
+Cole o conteúdo:
+
+```ini
+[Desktop Entry]
+Name=Ambiente Virtual do Aluno (Incus)
+Comment=Carrega a área de trabalho KDE Plasma isolada do estudante
+Exec=/usr/local/bin/iniciar-ambiente-aluno.sh
+Type=Application
+Keywords=incus;vm;kde;wayland;lab;
+```
+
+Defina a permissão correta:
+```bash
+sudo chmod 644 /usr/share/xsessions/incus-aluno.desktop
+```
+
+---
+
+### 6.3. Configurar o SDDM no Host Físico
+Defina essa sessão como a padrão no host em `/etc/sddm.conf.d/10-lab-session.conf`:
+
+```bash
+sudo mkdir -p /etc/sddm.conf.d
+sudo bash -c 'cat << "EOF" > /etc/sddm.conf.d/10-lab-session.conf
+[General]
+DisplayServer=x11
+
+[Theme]
+Current=debian-theme
+
+[Users]
+RememberLastSession=true
+
+[Autologin]
+Session=incus-aluno.desktop
+EOF'
+```
+
+Reinicie o SDDM no host físico para aplicar:
+```bash
+sudo systemctl restart sddm.service || true
+```
+
+---
+
+## 7. Como Funciona na Prática para o Aluno
+
+1. **Chegada ao Laboratório:** O aluno senta no computador e vê a tela de login do **SDDM**.
+2. **Autenticação:** O aluno insere seu usuário (`joao`) e sua senha (`aluno123`).
+3. **Abertura Imediata:** O monitor pisca rapidamente e abre a tela cheia do Debian 13. O SDDM interno da VM executa o autologin no usuário `aluno`.
+4. **Ambiente KDE Wayland:** O estudante está diante de uma área de trabalho **KDE Plasma nativa em Wayland**, com **Konsole**, **Dolphin**, **Firefox** e aceleração de vídeo, podendo programar e instalar pacotes com `sudo apt`.
+5. **Encerramento da Aula:** Quando o aluno clica em **"Desligar"** ou **"Encerrar Sessão"** no menu Iniciar do KDE:
+   - A VM encerra seus processos de forma limpa;
+   - O `virt-viewer` fecha a janela;
+   - O script do host executa `incus stop aluno-joao` para liberar 100% da RAM;
+   - O monitor retorna imediatamente à tela de login do SDDM, aguardando o próximo aluno.
+
+---
+
+## 8. Demonstração Prática: O "Teste de Fogo" (Apache2 vs Nginx)
+
+Para validar que o isolamento é absoluto e elimina qualquer conflito de serviços de rede entre turnos:
+
+### Turno 1: Aluno João instala o Apache2 (Turno da Manhã)
+1. João faz login na máquina física como `joao`.
+2. A tela do KDE Plasma abre automaticamente. Ele abre o terminal **Konsole** e executa:
    ```bash
    sudo apt update
    sudo apt install -y apache2
    echo "<h1>Ambiente do Joao: Servidor Apache2 Ativo na Porta 80</h1>" | sudo tee /var/www/html/index.html
    ```
-3. Ele abre o Firefox dentro do seu desktop e acessa:
+3. Ele abre o Firefox dentro do KDE e acessa:
    `http://localhost`
-   * **Resultado:** A página do Apache2 carrega perfeitamente na porta padrão 80.
-4. João desloga do sistema. O script encerra o container dele com `incus stop aluno-joao`.
+   * **Resultado:** A página do Apache2 carrega perfeitamente na porta 80.
+4. João clica no menu do KDE em **Desligar**. O container/VM desliga e o PC volta ao SDDM.
 
 ---
 
-### Cenário 2: Aluna Maria instala o Nginx (Turno da Noite)
-1. Maria senta na mesma máquina física e inicia seu container `aluno-maria`.
-2. No terminal gráfico do XFCE, ela digita:
+### Turno 2: Aluna Maria instala o Nginx (Turno da Noite)
+1. Maria senta na mesma máquina física e faz login como `maria`.
+2. A tela do KDE Plasma abre automaticamente. No **Konsole**, ela executa:
    ```bash
    sudo apt update
    sudo apt install -y nginx
@@ -300,18 +377,18 @@ Para validar que o isolamento é absoluto e elimina qualquer conflito de serviç
    ```
 3. Ela abre o Firefox dentro do seu desktop e acessa:
    `http://localhost`
-   * **Resultado:** O Nginx carrega com sucesso imediato na porta padrão 80.
-   * **Sem erro de porta ocupada:** O fato de o Apache2 do João estar instalado e configurado na porta 80 não afeta em nada a Maria, pois pertencem a Namespaces de rede e sistemas de arquivos totalmente separados.
+   * **Resultado:** O Nginx carrega com sucesso imediato na porta 80.
+   * **Sem erro de porta ocupada:** O fato de o Apache2 do João estar instalado na porta 80 não afeta em nada a Maria, pois pertencem a Namespaces de rede e sistemas de arquivos totalmente isolados.
 
 ---
 
-## 8. Manutenção e Restauração Instantânea (Professor e TI)
+## 9. Manutenção e Restauração Instantânea (Professor e TI)
 
-### 8.1. Restaurar um Ambiente Corrompido
-Se um aluno danificar bibliotecas do sistema ou quebrar o ambiente gráfico:
+### 9.1. Restaurar um Ambiente Corrompido
+Se um estudante desconfigurar o sistema operacional ou corromper arquivos essenciais:
 
 ```bash
-# 1. Para o container do aluno
+# 1. Para a instância do aluno
 incus stop aluno-joao
 
 # 2. Restaura o estado inicial limpo em menos de 2 segundos
@@ -321,8 +398,8 @@ incus snapshot restore aluno-joao base
 incus start aluno-joao
 ```
 
-### 8.2. Script em Lote para Criar Turmas Inteiras (`criar-turma-gui.sh`)
-Para provisionar 35 alunos de uma vez antes do início das aulas:
+### 9.2. Script em Lote para Criar Turmas Inteiras (`criar-turma-gui.sh`)
+Para provisionar uma turma inteira antes do início do semestre:
 
 ```bash
 #!/bin/bash
@@ -336,9 +413,6 @@ for i in $(seq -w 1 $TOTAL); do
     # Clona a imagem modelo instantaneamente
     incus copy modelo-desktop "$NOME"
     
-    # Aplica cotas de recursos (2 Cores, 3 GB RAM)
-    incus config set "$NOME" limits.cpu=2 limits.memory=3GiB
-    
     # Snapshot inicial de segurança
     incus snapshot create "$NOME" base
 done
@@ -348,8 +422,8 @@ echo "Turma $TURMA provisionada com sucesso!"
 
 ---
 
-## 9. Conclusão
+## 10. Conclusão
 
-A utilização do Incus com interface gráfica entrega o melhor dos dois mundos:
-1. **Autonomia Pedagógica Total:** Cada estudante tem privilégios de `root`, ambiente gráfico completo, liberdade para instalar qualquer stack (Apache, Nginx, Docker interno, bancos de dados) sem interferir nos colegas.
-2. **Eficiência de Infraestrutura:** Elimina o peso insustentável de dezenas de Máquinas Virtuais pesadas (VirtualBox/VMware), aproveita o poder do Btrfs para economizar centenas de gigabytes em disco e garante o desligamento automático de containers inativos para liberar a memória RAM da máquina física.
+Essa arquitetura entrega a melhor experiência para laboratórios acadêmicos:
+1. **Autonomia Pedagógica Total:** Cada estudante conta com privilégios de `root` via `sudo`, ambiente gráfico moderno com **KDE Plasma sobre Wayland**, liberdade para compilar códigos e subir servidores sem afetar outros turnos.
+2. **Eficiência e Estabilidade de Hardware:** Elimina o peso insustentável de máquinas virtuais pesadas convencionais, evita a execução de ambientes de desktop redundantes no host e garante o desligamento automático das instâncias para manter a máquina física sempre limpa e rápida.
