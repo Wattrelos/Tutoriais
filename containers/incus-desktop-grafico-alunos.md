@@ -82,9 +82,17 @@ Dentro do prompt root da VM `modelo-desktop`, execute os comandos abaixo para in
 apt update && apt upgrade -y
 
 # 2. Instalar KDE Plasma com suporte nativo a Wayland e o SDDM
+    # Obs.: Toda a integração do Wayland agora já vem embutida diretamente no pacote principal plasma-workspace
+    # Para instalar o ambiente completo (e compatível com Wayland por padrão), utilize o comando:
+    #   apt install kde-plasma-desktop
+
 apt install --no-install-recommends -y \
     kde-plasma-desktop \
-    plasma-workspace-wayland \
+    plasma-workspace \
+    xdg-desktop-portal-kde \
+    kscreen \
+    powerdevil \
+    libgl1-mesa-dri \
     sddm \
     konsole \
     dolphin \
@@ -109,7 +117,7 @@ apt install -y \
 ### 4.3. Configurar o Autologin no SDDM da VM
 Como o aluno já terá digitado a senha na tela de login física da máquina (Host), a VM deve entrar imediatamente no ambiente gráfico sem solicitar a senha uma segunda vez.
 
-Ainda dentro da VM, configure o autologin do SDDM para a sessão `plasmawayland`:
+Ainda dentro da VM, configure o autologin do SDDM para a sessão `plasma` (no Debian 13 / Plasma 6, a sessão Wayland padrão é registrada como `plasma.desktop`):
 
 ```bash
 # Cria o diretório de configurações do SDDM
@@ -122,7 +130,7 @@ DisplayServer=wayland
 
 [Autologin]
 User=aluno
-Session=plasmawayland
+Session=plasma
 Relogin=false
 EOF
 ```
@@ -419,6 +427,38 @@ done
 
 echo "Turma $TURMA provisionada com sucesso!"
 ```
+
+---
+
+### 9.3. Diagnóstico e Solução: Tela Preta com Ponteiro do Mouse na VM
+Se ao abrir o console da VM aparecer apenas uma tela preta com a seta do mouse se movimentando, o compositor Wayland (`kwin_wayland`) iniciou, mas a interface (`plasmashell`) não subiu.
+
+1. **Verificar os logs da sessão do usuário dentro da VM:**
+   ```bash
+   su - aluno -c "journalctl --user -b -p 4..0 --no-pager -n 50"
+   su - aluno -c "systemctl --user status plasma-plasmashell.service"
+   ```
+
+2. **Garantir os pacotes recomendados do Plasma 6 e drivers DRI:**
+   ```bash
+   apt install -y xdg-desktop-portal-kde kscreen powerdevil libgl1-mesa-dri
+   ```
+
+3. **Conflito do `powerdevil` com tela virtual SPICE (DDC/CI):**
+   Adicione ao arquivo `/etc/environment` dentro da VM:
+   ```text
+   POWERDEVIL_NO_DDCUTIL=1
+   QT_QUICK_BACKEND=software
+   ```
+
+4. **Alternativa Direta via X11 (Caso o driver virtual não suporte aceleração Wayland):**
+   Se o driver gráfico virtual do host apresentar incompatibilidade com Wayland, você pode alternar o autologin para a sessão X11 tradicional:
+   ```bash
+   apt install -y kwin-x11
+   sed -i 's/Session=plasma/Session=plasmax11/' /etc/sddm.conf.d/autologin.conf
+   sed -i 's/DisplayServer=wayland/DisplayServer=x11/' /etc/sddm.conf.d/autologin.conf
+   systemctl restart sddm
+   ```
 
 ---
 

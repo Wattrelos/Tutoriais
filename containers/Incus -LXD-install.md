@@ -159,6 +159,7 @@ sudo apt install -y incus btrfs-progs
 ---
 
 ## 5. Configuração Inicial do Servidor (`incus admin init`)
+------------------------------
 
 Com a partição dedicada pronta (`/dev/sda4`), inicializamos o Incus apontando diretamente para ela:
 
@@ -166,6 +167,36 @@ Com a partição dedicada pronta (`/dev/sda4`), inicializamos o Incus apontando 
 sudo incus admin init
 ```
 
+Você pode apenas apertar Enter para a maioria dessas perguntas, pois os valores padrão (que ficam dentro dos colchetes [default=...]) são ideais para uma VPS de servidor único.
+Como você acabou de instalar o btrfs-progs, recomendo criar um pool de armazenamento do tipo btrfs ou usar o dir (diretório comum) caso o seu sistema de arquivos atual não seja BTRFS.
+Siga este roteiro respondendo às perguntas do assistente:
+
+   1. Would you like to use clustering? (yes/no) [default=no]:
+   * Pressione Enter (escolhe no, já que é uma VPS única).
+   2. Do you want to configure a new storage pool? (yes/no) [default=yes]:
+   * Pressione Enter (escolhe yes, fundamental para resolver o seu erro anterior).
+   3. Name of the new storage pool [default=default]:
+   * Pressione Enter (define o nome do pool como default).
+   4. Name of the storage backend to use (btrfs, dir, mock) [default=btrfs]:
+   * Se o seu disco principal da VPS já for formatado em BTRFS, pressione Enter.
+      * Se não tiver certeza ou se for um disco ext4 comum, digite dir e pressione Enter (o tipo dir funciona em absolutamente qualquer VPS sem precisar de partições limpas).
+   5. Would you like to connect to a MAAS server? (yes/no) [default=no]:
+   * Pressione Enter.
+   6. Would you like to configure a new local network bridge? (yes/no) [default=yes]:
+   * Pressione Enter (para criar a rede interna que dará internet às suas VMs).
+   7. Name of the new bridge [default=incusbr0]:
+   * Pressione Enter.
+   8. IPv4 address or fallback to auto [default=auto]:
+   * Pressione Enter.
+   9. IPv6 address or fallback to auto [default=auto]:
+   * Pressione Enter.
+   10. Would you like the Incus server to be available over the network? (yes/no) [default=no]:
+   * Pressione Enter (mantém o gerenciamento restrito apenas por dentro da VPS por segurança).
+   11. Would you like stale cached images to be updated automatically? (yes/no) [default=yes]
+   * Pressione Enter.
+   12. Would you like a YAML profile show to be printed? (yes/no) [default=no]:
+   * Pressione Enter.
+   
 
 
 > **Atenção:** Em máquinas com SSD NVMe, substitua `/dev/sda4` pelo identificador correto (ex: `/dev/nvme0n1p4`). Use o comando `lsblk` para confirmar o nome da partição antes de executar o assistente.
