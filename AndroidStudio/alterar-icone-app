@@ -1,0 +1,43 @@
+# Como alterar o ícone do aplicativo no Android Studio
+
+A forma mais recomendada e moderna de alterar o ícone do seu app no Android Studio é utilizando a ferramenta Image Asset. Ela gera automaticamente o ícone em todas as resoluções necessárias (Adaptive e Legacy Icons) para diferentes tamanhos de tela.
+
+Siga o passo a passo abaixo para realizar a alteração:
+## Passo 1: Abrir o Image Asset
+
+   1. No painel esquerdo do Android Studio, mude a visualização do projeto para a perspectiva Android (no menu suspenso do topo da árvore de arquivos).
+   2. Navegue até a pasta app > res.
+   3. Clique com o botão direito em cima da pasta res, vá em New e selecione Image Asset.
+
+## Passo 2: Configurar o seu Ícone
+Uma janela de configuração será aberta. Ajuste as seguintes opções:
+
+* 
+* Icon Type: Mantenha como Launcher Icons (Adaptive and Legacy).
+* Name: Mantenha como ic_launcher (esse é o nome padrão que o Android já procura).
+* 
+
+## Na aba "Foreground Layer" (Camada da frente / seu logo):
+
+* 
+* Asset Type: Selecione Image.
+* Path: Clique no ícone de pasta e selecione o caminho da sua imagem no computador (dê preferência para imagens em alta resolução ou formatos vetoriais).
+* Resize: Use a barra de rolagem para ajustar o tamanho da sua imagem. Garanta que ela fique totalmente dentro da zona segura (círculo preto interno) para que não seja cortada em nenhum modelo de celular.
+* 
+
+## Na aba "Background Layer" (Camada de fundo):
+
+* 
+* Asset Type: Escolha Color (para uma cor sólida) ou Image (caso seu fundo tenha textura/detalhes).
+* Color / Path: Escolha a cor de fundo desejada usando o seletor ou defina sua imagem de fundo.
+* 
+
+## Passo 3: Concluir e Substituir
+
+   1. Clique em Next no canto inferior direito.
+   2. O Android Studio exibirá uma tela mostrando que vai substituir os arquivos antigos do ícone padrão. Certifique-se de que a opção Source Set está marcada como main.
+   3. Clique em Finish.
+
+Pronto! Ao compilar e executar o seu aplicativo novamente, o novo ícone já estará configurado e visível no menu do aparelho.
+
+Dica: Caso você tenha mudado o nome do ícone no passo anterior para algo diferente de ic_launcher, lembre-se de abrir o arquivo AndroidManifest.xml e atualizar os atributos android:icon e android:roundIcon dentro da tag <application> com o novo nome escolhido.
