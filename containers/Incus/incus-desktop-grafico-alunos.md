@@ -59,11 +59,15 @@ sudo usermod -aG incus-admin aluno 2>/dev/null || true
 Criaremos uma única imagem modelo baseada no Debian 13 chamada `modelo-desktop`. Todos os ambientes dos alunos serão clones instantâneos desse modelo.
 
 ### 4.1. Inicializar a VM Base no Incus
+
+# Observação: As configurações de CPU e Memória devem ser baseadas no teu hardware, vide: incus-recomendacao-recursos.md
+
 Execute no terminal do host Debian físico:
 
 ```bash
 # Cria e inicializa a Máquina Virtual com Debian 13
-incus launch images:debian/13 modelo-desktop --vm -c limits.cpu=4 -c limits.memory=4GiB
+# (considerando Processador: Intel Core i7-4770 (que possui 4 núcleos físicos e 8 threads e 16 GB de RAM)
+incus launch images:debian/13 modelo-desktop --vm -c limits.cpu=6 -c limits.memory=13GiB
 
 # Aguarda 10 segundos para a VM concluir a inicialização do agente interno
 sleep 10
