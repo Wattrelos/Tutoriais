@@ -45,11 +45,26 @@ sudo apt update
 sudo apt install -y xorg sddm virt-viewer incus zenity
 ```
 
-### 3.2. Garantir que os Usuários Possam Controlar o Incus
-Para que o script de login do SDDM possa iniciar e abrir a VM do aluno sem exigir senha de root, adicione os usuários locais ou o usuário genérico ao grupo `incus-admin`:
+### 3.2. Criar Conta no Host e Garantir Controle do Incus
+Para que o SDDM da máquina física autentique o aluno e o script consiga iniciar a VM sem exigir senha de root, os usuários do host precisam pertencer ao grupo `incus-admin`:
 
+* **Abordagem Recomendada (Conta Genérica com Menu):** Crie apenas o usuário genérico `aluno`:
 ```bash
-sudo usermod -aG incus-admin aluno 2>/dev/null || true
+sudo useradd -m -s /bin/bash aluno 2>/dev/null || true
+echo "aluno:aluno123" | sudo chpasswd
+sudo usermod -aG incus-admin aluno
+```
+
+* **Abordagem Alternativa (Logins Nominais no Host):** Caso queira contas separadas no monitor físico:
+```bash
+# Exemplo para joao e maria:
+sudo useradd -m -s /bin/bash joao 2>/dev/null || true
+echo "joao:aluno123" | sudo chpasswd
+sudo usermod -aG incus-admin joao
+
+sudo useradd -m -s /bin/bash maria 2>/dev/null || true
+echo "maria:aluno123" | sudo chpasswd
+sudo usermod -aG incus-admin maria
 ```
 
 ---
@@ -98,6 +113,11 @@ apt install --no-install-recommends -y \
     powerdevil \
     libgl1-mesa-dri \
     sddm \
+    sddm-theme-breeze \
+    libxcb-cursor0 \
+    spice-vdagent \
+    xwayland \
+    xserver-xorg \
     konsole \
     dolphin \
     kwrite
@@ -114,6 +134,9 @@ apt install -y \
     iputils-ping \
     nano \
     vim
+
+# 4. Definir inicialização padrão do sistema para modo gráfico
+systemctl set-default graphical.target
 ```
 
 ---
@@ -169,7 +192,34 @@ chown -R "${USUARIO}:${USUARIO}" "/home/${USUARIO}"
 
 ---
 
-### 4.5. Finalizar e Congelar a Imagem Base
+### 4.5. Testar a Imagem Modelo em Modo Gráfico (Opcional)
+
+Antes de desligar e congelar a VM modelo para gerar os clones dos alunos, você pode verificar se a interface gráfica está subindo perfeitamente:
+
+1. **Inicie o SDDM dentro da VM** (caso o serviço ainda não tenha sido iniciado):
+```bash
+# Ainda no terminal da VM:
+systemctl start sddm
+```
+
+2. **Abra o console VGA no host físico:**
+No terminal do seu computador físico (Debian 13), execute:
+```bash
+incus console modelo-desktop --type=vga
+```
+
+> [!TIP]
+> **O que esperar:**
+> * Uma janela do **`virt-viewer`** será aberta automaticamente.
+> * O SDDM executará o autologin na conta do usuário `aluno`.
+> * A área de trabalho completa do **KDE Plasma em Wayland** carregará fluidamente.
+> * Graças ao pacote `spice-vdagent`, o mouse funcionará sem travar e a resolução da tela se adaptará automaticamente se você redimensionar a janela.
+> 
+> Para sair do teste, basta fechar a janela do `virt-viewer` ou clicar em **"Encerrar Sessão"** dentro do KDE.
+
+---
+
+### 4.6. Finalizar e Congelar a Imagem Base
 Saia da VM para o host físico e crie o snapshot de referência:
 
 ```bash
@@ -219,6 +269,36 @@ incus list -c n,s,t,4
 | aluno-maria | RUNNING | VIRTUAL-MACHINE | 10.0.100.26 (enp5s0)|
 +-------------+---------+-----------------+--------------------+
 ```
+
+---
+
+### 5.3. Esclarecimento Arquitetural: Preciso criar contas para cada aluno dentro da VM ou no Host?
+
+Para quem está gerenciando laboratórios virtuais com Incus pela primeira vez, esta é a dúvida mais comum:
+
+#### 1. Dentro da VM clonada (`aluno-joao`): ❌ NÃO precisa criar contas
+* **Por que?** O isolamento entre alunos **não é feito por contas de usuário**, mas sim pela **Máquina Virtual inteira**.
+* A VM `aluno-joao` já possui seu próprio disco Btrfs CoW, arquivos e memória 100% isolados.
+* Como a imagem modelo base (`modelo-desktop`) já foi configurada com o usuário `aluno` e autologin no SDDM interno, ao clonar para `aluno-joao` ela já inicia direto na área de trabalho KDE pronta para uso. O aluno tem privilégios de `sudo` dentro da sua VM sem qualquer risco de interferir no host ou nos outros alunos.
+
+#### 2. No SDDM da Máquina Física (Host): Depende do método de acesso
+O script orquestrador do host ([`/usr/local/bin/iniciar-ambiente-aluno.sh`](#61-script-de-inicialização-da-sessão-usrlocalbininiciar-ambiente-alunosh)) suporta duas abordagens:
+
+* **Abordagem A: Conta Genérica Única com Menu Seletor (⭐ Mais Prática):**
+  * Você cria apenas o usuário `aluno` no Debian físico (host) conforme a seção 3.2.
+  * O estudante senta, faz login com `aluno` / `aluno123`, e uma janela gráfica (**Zenity**) lista todas as VMs disponíveis (`joao`, `maria`, etc.).
+  * O aluno clica no seu nome e a VM dele abre em tela cheia.
+  * **Vantagem:** Quando um novo aluno entra na turma, basta clonar a VM com `incus copy modelo-desktop aluno-novato`. O nome dele já aparecerá automaticamente na lista, **sem necessidade de cadastrar usuários no host físico**.
+
+* **Abordagem B: Login Nominal no Monitor Físico:**
+  * Você cria uma conta no Debian físico para cada estudante (`joao`, `maria`), adicionando-os ao grupo `incus-admin` (seção 3.2).
+  * O estudante digita seu próprio nome (`joao`) na tela física do SDDM e o script abre diretamente a VM `aluno-joao` em tela cheia.
+
+| Onde? | Precisa criar conta para cada aluno (`joao`, `maria`)? | Motivo |
+| :--- | :---: | :--- |
+| **Dentro da VM** | ❌ **Não** | O desktop já abre no usuário padrão `aluno` com autologin. A VM inteira já é exclusiva daquele aluno. |
+| **No Host (Modo Menu Zenity)** | ❌ **Não** | Usa apenas o usuário genérico `aluno`. A janela interativa lista as VMs disponíveis automaticamente. |
+| **No Host (Modo Login Nominal)** | ✔️ **Sim** | O SDDM do host precisa autenticar o usuário antes de disparar o script da VM correspondente. |
 
 ---
 

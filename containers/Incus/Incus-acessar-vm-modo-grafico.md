@@ -8,6 +8,10 @@ sudo apt update
 sudo apt install virt-viewer
 ```
 
+> [!IMPORTANT]
+> **Pré-requisito obrigatório:** O console VGA nativo (`--type=vga`) **funciona exclusivamente em Máquinas Virtuais** criadas com a flag `--vm` (ex: `incus launch images:debian/13 modelo-desktop --vm`). Se a instância for um contêiner convencional (LXC), o comando retornará: `Erro: VGA console is only supported by virtual machines`.
+> Além disso, certifique-se de ter o pacote `spice-vdagent` instalado dentro da VM para integração suave do mouse e resolução dinâmica.
+
 ## 2. Acessar a VM em modo gráfico
 Certifique-se de que a VM está rodando. Em seguida, execute o comando abaixo no terminal do seu Debian 13 para abrir a tela da VM:
 ```bash

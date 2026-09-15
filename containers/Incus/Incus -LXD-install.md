@@ -10,8 +10,9 @@ Nos laboratórios de faculdades e universidades, o uso tradicional do Windows im
 * **Prevenção de Exclusão Acidental de Arquivos:** Em sistemas compartilhados com diretórios públicos locais, a falta de isolamento individual resulta na exclusão ou sobrescrita acidental de projetos de outros colegas. Isso causa retrabalho, perda de notas e transtornos frequentes.
 * **O Efeito Colateral do "Deep Freeze":** Softwares de congelamento de disco apagam qualquer progresso a cada reinicialização, inviabilizando projetos contínuos que duram várias semanas ao longo do semestre.
 * **Sobrecarga de Máquinas Virtuais Convencionais (VirtualBox / VMware):** Cada VM reserva de 2 a 4 GB de memória RAM e inicializa um kernel completo e pesado. Em computadores de laboratório com 8 GB ou 16 GB de RAM, poucas VMs conseguem rodar simultaneamente sem degradar a máquina física.
+* **Outro motivo para se utilizar Linux é que a grande maioria dos sistemas utilizam Linux:** Servidores, backbones, dispositivos móveis (Android), supercomputadores e etc. Portanto os alunos estarão em contato com o ambiente que irão encontrar no mercado de trabalho. Por exemplo, no mercado de trabalho, o profissional de TI for hospedar seu projeto em um provedor de nuvem (AWS, Azure, Google, etc.) ele receberá uma instância com o Linux instalado pronto para receber seus sistema. Um aluno que está se formando e irá trabalhar na área de TI, deve estar familiarizado com o ambiente Linux.
 
-### Por que o Incus é a Solução Ideal?
+### Uma das várias soluções é o Incus.
 
 O **Incus** é o gerenciador comunitário de containers de sistema mantido pelo projeto *Linux Containers* (os criadores originais do LXC/LXD). Ao contrário de containers de aplicação (como o Docker), o Incus entrega uma **máquina Linux completa** com seu próprio init (`systemd`), serviços em background, rede própria e gerenciamento de processos.
 
