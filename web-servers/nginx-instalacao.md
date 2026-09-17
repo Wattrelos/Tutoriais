@@ -104,6 +104,10 @@ server {
 }
 
 ```
+
+## Observação impotante:
+    No Ngnix, não se utiliza extensao .conf para nomear os arquivos, apenas para diferenciar dentro da pasta sites-available e sites-enabled.
+
 ## O que mudou na conversão?
 
 * DocumentRoot virou root: Aponta exatamente para o mesmo diretório público.
@@ -136,10 +140,15 @@ sudo systemctl reload nginx
 # Passo Extra (Importante para domínios locais .local)
 Como você está usando o domínio meusite.local, o seu computador precisa saber para onde enviar esse endereço. Se você for testar no mesmo servidor (ou se estiver usando uma máquina virtual/WSL na mesma máquina), adicione o domínio ao arquivo hosts do seu sistema operacional:
 
-* No Linux / macOS: Edite o arquivo /etc/hosts (sudo nano /etc/hosts) e adicione a linha:
+* No Linux / macOS: Edite o arquivo /etc/hosts:
+```bash
+sudo nano /etc/hosts
+```
 
+Adicione a linha:
+```bash
 127.0.0.1 meusite.local www.meusite.local
-
+```
 * No Windows: Edite o arquivo C:\Windows\System32\drivers\etc\hosts como Administrador e adicione a mesma linha acima.
 
 Ao acessar http://meusite.local no navegador, o site carregou corretamente ou você se deparou com algum erro (como 403 Forbidden ou 502 Bad Gateway)? Edições extras podem ser necessárias dependendo do tipo do projeto.
@@ -161,16 +170,17 @@ Você precisa adicionar a linha abaixo no arquivo hosts da sua máquina (veja co
 Se você quiser que o seu site apareça mesmo quando você digitar http://localhost, você precisa desativar o site padrão do Nginx e dizer para o seu arquivo aceitar o localhost.
 
    1. Remova o link do site padrão:
-   
+   ```bash
    sudo rm /etc/nginx/sites-enabled/default
-   
+   ```
    2. Adicione o localhost no seu arquivo (Abra /etc/nginx/sites-available/meusite e mude a linha server_name):
-   
+   ```bash
    server_name meusite.local www.meusite.local localhost;
-   
+   ```   
    3. Recarregue o Nginx:
-   
+   ```bash
    sudo systemctl reload nginx
+   ```
    
    
 Ao digitar http://meusite.local diretamente na barra de endereços, o seu site abriu corretamente ou apareceu alguma página de erro?
