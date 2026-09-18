@@ -181,9 +181,55 @@ Se você quiser que o seu site apareça mesmo quando você digitar http://localh
    ```bash
    sudo systemctl reload nginx
    ```
-   
-   
-Ao digitar http://meusite.local diretamente na barra de endereços, o seu site abriu corretamente ou apareceu alguma página de erro?
 
+---
 
+### ⚠️ Atenção: Por que você receberá erro `404 Not Found` ao acessar
 
+Se você tentar abrir agora, o Nginx responderá com **404 Not Found**. O motivo é a configuração da pasta raiz na linha 6:
+
+# Criando a pasta public_html e criando um arquivo index.php dentro dela
+# Isso é necessario para que o Nginx encontre o arquivo index.php, caso o seu projeto não tenha uma pasta public_html, crie uma e mova o arquivo index.php para dentro dela
+
+```nginx
+root /var/www/html/meusite/public_html;
+```
+
+A pasta `public_html` **deve existir** dentro da raiz do projeto, junto com o arquivo index.php:
+
+```bash
+cd /var/www/html/meusite
+
+# Cria a pasta public_html
+mkdir public_html
+
+# Cria o arquivo index.php dentro da pasta public_html
+cd public_html
+md index.php
+
+# Preenchendo o index.php com um exemplo simples de PHP
+# Using the heredoc syntax in Bash
+echo <<EOF > index.php
+<h1>PHP funcionando no Nginx!</h1>
+EOF
+
+```
+
+#### Apontar para a raiz do projeto:
+
+1. Altere a linha 6 do arquivo [/etc/nginx/sites-available/meusite](file:///etc/nginx/sites-available/meusite#L6) para:
+   ```nginx
+   root /var/www/html/meusite;
+   ```
+
+2. Se este for um projeto estático ou simples (e não uma aplicação Slim Framework que depende de um `index.php`), ajuste também o bloco `location /` (linha 24):
+   ```nginx
+   location / {
+       try_files $uri $uri/ =404;
+   }
+   ```
+
+3. Recarregue o Nginx:
+   ```bash
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
