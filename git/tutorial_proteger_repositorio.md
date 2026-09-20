@@ -268,23 +268,23 @@ Quando chaves ficam *hardcoded* dentro de arquivos de configuração, controller
 // config/database.php — PERIGO: credenciais no código-fonte
 return [
     'driver'   => 'mysql',
-    'host'     => 'db-prod.empresa.com',
+    'host'     => '<host>',
     'port'     => 3306,
-    'username' => 'admin_producao',
-    'password' => 'S3nh@Ultr4S3cr3t@!',  // ← Vai parar no GitHub!
-    'database' => 'app_producao',
+    'username' => '<usuario>',
+    'password' => '<senha>',  // ← Vai parar no GitHub!
+    'database' => '<nome_do_banco>',
 ];
 ```
 
 ```javascript
 // services/stripe.js — PERIGO: token no código-fonte
-const stripe = require('stripe')('sk_live_51MzRealTokenAqui123456789');  // ← Exposta!
+const stripe = require('stripe')('sk_live_<chave_do_token_aqui>');  // ← Exposta!
 ```
 
 ```python
 # settings.py — PERIGO: chave JWT no código-fonte
-JWT_SECRET = "minha-chave-jwt-super-secreta-2025"  # ← Comprometida!
-OPENAI_API_KEY = "sk-proj-abc123def456..."          # ← Robôs detectam em <60s!
+JWT_SECRET = "<chave_jwt_aqui>"  # ← Comprometida!
+OPENAI_API_KEY = "<chave_openai_aqui>"          # ← Robôs detectam em <60s!
 ```
 
 > [!CAUTION]
