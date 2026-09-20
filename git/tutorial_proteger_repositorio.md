@@ -268,23 +268,23 @@ Quando chaves ficam *hardcoded* dentro de arquivos de configuração, controller
 // config/database.php — PERIGO: credenciais no código-fonte
 return [
     'driver'   => 'mysql',
-    'host'     => '<host>',
+    'host'     => '127.0.0.1',
     'port'     => 3306,
-    'username' => '<usuario>',
-    'password' => '<senha>',  // ← Vai parar no GitHub!
-    'database' => '<nome_do_banco>',
+    'username' => 'superman',
+    'password' => 'm$DUMtNiAPTy1$GI9RJ-k4%',
+    'database' => 'sitema_financeiro',
 ];
 ```
 
 ```javascript
 // services/stripe.js — PERIGO: token no código-fonte
-const stripe = require('stripe')('sk_live_<chave_do_token_aqui>');  // ← Exposta!
+const stripe = require('stripe')('sk_test_51MzRealTokenAqui123456789');  // ← Exposta!
 ```
 
 ```python
 # settings.py — PERIGO: chave JWT no código-fonte
-JWT_SECRET = "<chave_jwt_aqui>"  # ← Comprometida!
-OPENAI_API_KEY = "<chave_openai_aqui>"          # ← Robôs detectam em <60s!
+JWT_SECRET = "<jwt-super-secreta-2025>"  # ← Comprometida!
+OPENAI_API_KEY = "<sk-proj-abc123def456...>"          # ← Robôs detectam em <60s!
 ```
 
 > [!CAUTION]
@@ -301,33 +301,33 @@ OPENAI_API_KEY = "<chave_openai_aqui>"          # ← Robôs detectam em <60s!
 # BANCO DE DADOS
 # ========================
 DB_DRIVER=mysql
-DB_HOSTNAME=db-prod.empresa.com
+DB_HOSTNAME=<host>
 DB_PORT=3306
-DB_USERNAME=admin_producao
-DB_PASSWORD=S3nh@Ultr4S3cr3t@!
-DB_DATABASE=app_producao
+DB_USERNAME=<usuario>
+DB_PASSWORD=<senha>
+DB_DATABASE=<nome-do-banco>
 
 # ========================
 # APIs EXTERNAS
 # ========================
-STRIPE_SECRET_KEY=sk_live_51MzRealTokenAqui123456789
-OPENAI_API_KEY=sk-proj-abc123def456...
+STRIPE_SECRET_KEY=<chave-do-token-aqui>
+OPENAI_API_KEY=<chave-do-token-aqui>
 
 # ========================
 # SEGURANÇA DA APLICAÇÃO
 # ========================
-JWT_SECRET_KEY=minha-chave-jwt-super-secreta-2025
-API_SIGNATURE_SECRET=assinatura-secreta-da-api
+JWT_SECRET_KEY=<chave-do-token-aqui>
+API_SIGNATURE_SECRET=<chave-do-token-aqui>
 
 # ========================
 # CACHE E MENSAGERIA
 # ========================
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_PASSWORD=redis-senha-segura
+REDIS_HOST=<host>
+REDIS_PORT=<porta>
+REDIS_PASSWORD=<senha>
 
-RABBITMQ_PORT=5672
-RABBITMQ_MANAGEMENT_PORT=15672
+RABBITMQ_PORT=<porta>
+RABBITMQ_MANAGEMENT_PORT=<porta>
 ```
 
 **Código refatorado — lendo do ambiente:**
