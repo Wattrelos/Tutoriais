@@ -1,0 +1,37 @@
+```plantuml
+@startuml
+skinparam componentStyle rectangle
+
+actor "Atacante / Usuário" as User
+
+package "1. Camada de Perímetro (Borda)" {
+  [Cloudflare WAF / CDN / Rate Limiting] as Layer1
+}
+
+package "2. Camada de Rede & Servidor" {
+  [Nginx / Apache] as WebServer
+  [Honeypot (/admin)] as Honeypot
+  [Fail2ban / iptables] as Firewall
+}
+
+package "3. Camada do Aplicativo" {
+  [PHP / Rota Oculta] as App
+}
+
+package "4. Camada de Autenticação" {
+  [Login + 2FA (TOTP)] as Auth
+}
+
+package "5. Camada de Dados" {
+  [Database (AES-256) & Audit Logs] as DB
+}
+
+User -> Layer1 : 1. Requisição HTTP/HTTPS
+Layer1 -> WebServer : 2. Tráfego Filtrado
+WebServer -> Honeypot : Acesso a /admin (Armadilha)
+Honeypot -> Firewall : Dispara Regra de Banimento de IP
+WebServer -> App : Acesso à /rota-secreta
+App -> Auth : Desafio de Login + Token 2FA
+Auth -> DB : Acesso Restrito ao Banco
+@enduml
+```
