@@ -289,7 +289,7 @@ Ferramentas para impedir código espaguete e monitorar a complexidade do sistema
 Valida que regras de camadas (ex: Clean Architecture / Hexagonal) sejam respeitadas:
 - **Instalação:**
   ```bash
-  composer require --dev qossmic/deptrac
+  composer require --dev deptrac/deptrac
   ```
 - **Verificação de versão:**
   ```bash

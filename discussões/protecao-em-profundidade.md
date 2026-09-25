@@ -63,7 +63,7 @@ Em vez de simplesmente responder `404 Not Found` na rota padrão que todos os bo
 1. Um bot escaneia a URL `/admin` procurando painéis vulneráveis.
 2. O servidor web intercepta a rota, devolve uma resposta fictícia (para não dar pistas) e grava o IP em um log dedicado de armadilha (`honeypot.log`).
 3. O **Fail2ban** monitora esse arquivo de log e, na primeira ocorrência, instrui o firewall do sistema operacional (`iptables` ou `nftables`) a **banir o IP de forma imediata e temporária**.
-4. Qualquer tentativa posterior daquele IP — mesmo que ele tente adivinhar a rota secreta real — sequer alcançará a porta do Nginx.
+4. Qualquer tentativa posterior daquele IP mesmo que ele tente adivinhar a rota secreta real sequer alcançará a porta do Nginx.
 
 ```mermaid
 sequenceDiagram
