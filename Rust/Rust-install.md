@@ -52,7 +52,7 @@ O Rustup instala os binários em `~/.cargo/bin`. Ative as variáveis na sessão 
 source "$HOME/.cargo/env"
 ```
 
-*(O instalador já adiciona automaticamente essa linha ao seu `~/.bashrc` ou `~/.profile`).*
+*(O instalador já adiciona automaticamente essa linha ao teu `~/.bashrc` ou `~/.profile`).*
 
 ### 2.3 Validar a instalação
 Verifique se o compilador (`rustc`) e o gerenciador de pacotes/construção (`cargo`) estão operacionais:
@@ -197,7 +197,7 @@ cargo clippy --fix
 ```
 
 ### 5.5 BDD com Gherkin: `cucumber-rs` (vs. Behat)
-Se seu time utiliza especificações em linguagem natural (Given/When/Then), o [cucumber-rs](https://crates.io/crates/cucumber) oferece paridade completa com o Behat.
+Se teu time utiliza especificações em linguagem natural (Given/When/Then), o [cucumber-rs](https://crates.io/crates/cucumber) oferece paridade completa com o Behat.
 
 Estrutura de diretórios:
 ```text
