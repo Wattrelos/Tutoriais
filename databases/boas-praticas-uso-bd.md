@@ -1,4 +1,4 @@
-# 📂 Boas Práticas na Arquitetura de Persistência Poliglota (SQL + MongoDB + Redis)
+# 📂 Boas Práticas na Arquitetura de Persistência Poliglota (SQL + MongoDB + Redis + Cassandra)
 
 > **Guia de Engenharia de Software e Modelagem de Dados para E-commerce de Alta Performance**  
 > Para uma aplicação de e-commerce moderna, projetar a arquitetura de dados correta desde o início poupa meses de refatoração crítica. A estratégia canônica para sistemas robustos é a **Persistência Poliglota (Polyglot Persistence)**, onde cada motor de banco de dados é empregado estritamente para o que faz de melhor, respeitando os *Bounded Contexts* (Contextos Delimitados) do domínio.
@@ -7,22 +7,22 @@
 
 ## 1. O Core da Arquitetura: A Divisão Estratégica de Responsabilidades
 
-Em uma plataforma de e-commerce, as cargas de trabalho (*workloads*) possuem requisitos completamente opostos: leitura massiva com dados polimórficos no catálogo vs. consistência transacional estrita (ACID) no checkout e financeiro.
+Em uma plataforma de e-commerce, as cargas de trabalho (*workloads*) possuem requisitos completamente opostos: leitura massiva com dados polimórficos no catálogo vs. consistência transacional estrita (ACID) no checkout vs. altíssima taxa de ingestão de dados imutáveis/temporais para histórico e logs.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            PERSISTÊNCIA POLIGLOTA                           │
-├─────────────────────┬───────────────────────────────┬───────────────────────┤
-│    Catálogo & Busca │    Transacional & Estoque     │ Sessão, Carrinho & L2 │
-├─────────────────────┼───────────────────────────────┼───────────────────────┤
-│       MongoDB       │    PostgreSQL / MariaDB       │         Redis         │
-│  (Document / NoSQL) │         (Relacional)          │      (In-Memory)      │
-│                     │                               │                       │
-│ • Schemas dinâmicos │ • Transações ACID rigorosas   │ • Sessões com TTL     │
-│ • Variações / SKUs  │ • Estoque e reserva atômica   │ • Carrinhos voláteis  │
-│ • Busca facetada    │ • Pedidos, Notas Fiscais      │ • Rate limiting       │
-│ • Alta vazão leitura│ • Ledger financeiro e Cupons  │ • Cache de consultas  │
-└─────────────────────┴───────────────────────────────┴───────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                          PERSISTÊNCIA POLIGLOTA                                         │
+├─────────────────────┬───────────────────────────────┬───────────────────────┬───────────────────────────┤
+│    Catálogo & Busca │    Transacional & Estoque     │ Sessão, Carrinho & L2 │  Histórico, Logs & Ledger │
+├─────────────────────┼───────────────────────────────┼───────────────────────┼───────────────────────────┤
+│       MongoDB       │    PostgreSQL / MariaDB       │         Redis         │ Apache Cassandra / Scylla │
+│  (Document / NoSQL) │         (Relacional)          │      (In-Memory)      │       (Wide-Column)       │
+│                     │                               │                       │                           │
+│ • Schemas dinâmicos │ • Transações ACID rigorosas   │ • Sessões com TTL     │ • Extrato financeiro      │
+│ • Variações / SKUs  │ • Estoque e reserva atômica   │ • Carrinhos voláteis  │ • Trilha de auditoria     │
+│ • Busca facetada    │ • Pedidos, Notas Fiscais      │ • Rate limiting       │ • Ingestão massiva (LSM)  │
+│ • Alta vazão leitura│ • Autorização de Pagamento    │ • Cache de consultas  │ • Expiração via TTL nativo│
+└─────────────────────┴───────────────────────────────┴───────────────────────┴───────────────────────────┘
 ```
 
 ### 1.1 Catálogo de Produtos e Busca ➔ MongoDB + Search Engine
@@ -31,14 +31,20 @@ Em uma plataforma de e-commerce, as cargas de trabalho (*workloads*) possuem req
 * **Evolução de Busca:** Para busca com tolerância a erros de digitação (*fuzzy search*), sinônimos e relevância ponderada por pontuação (*score*), utilize o **MongoDB Atlas Search** (baseado em Apache Lucene) ou integre uma engine dedicada como **OpenSearch / Elasticsearch**.
 
 ### 1.2 Checkout, Estoque e Financeiro ➔ Banco Relacional (PostgreSQL / MariaDB)
-* **Responsabilidade:** Processamento de pedidos (*orders*), regras de checkout, controle de saldo e reservas de estoque, transações financeiras, conciliação e cupons de desconto.
+* **Responsabilidade:** Processamento de pedidos (*orders*), regras de checkout, controle de saldo e reservas de estoque, conciliação e cupons de desconto.
 * **Garantia ACID:** Se há apenas 1 unidade de um item em estoque, duas compras simultâneas não podem ser autorizadas sob hipótese alguma. Bancos relacionais com isolamento transacional (*READ COMMITTED* ou *SERIALIZABLE*) e bloqueio pessimista (`SELECT ... FOR UPDATE`) garantem que a consistência matemática e fiscal seja inviolável. Em caso de falha de gravação ou pagamento recusado, o `ROLLBACK` anula atomicamente todas as alterações.
 
 ### 1.3 Sessão, Carrinho e Cache de Performance ➔ Redis
 * **Responsabilidade:** Armazenamento de sessões ativas de usuários, carrinhos de compras em andamento, limites de requisição (*rate limiting*) e cache de segundo nível (L2) de consultas frequentes do catálogo.
 * **Ciclo de Vida Efêmero (TTL):** Carrinhos abandonados e tokens de sessão expirados não devem ocupar espaço permanente no banco relacional ou documental. O Redis gerencia expiração automática via **TTL (Time to Live)** de forma nativa (ex: 7 dias para carrinhos de visitantes). Além disso, sua execução 100% em memória RAM entrega respostas em microssegundos.
 
-### 1.4 A Regra de Ouro do E-commerce: Snapshots Imutáveis de Pedidos
+### 1.4 Histórico de Transações, Auditoria e Logs ➔ Apache Cassandra / ScyllaDB
+* **Responsabilidade:** Armazenamento de séries temporais imutáveis (*Append-Only*), extratos de transações financeiras para consulta do cliente, trilhas completas de auditoria (*Audit Trail*) e telemetria de navegação/eventos.
+* **Separação Estratégica (Execução vs. Histórico):** A autorização da transação ocorre no banco relacional com ACID rigoroso. Uma vez concluída, o histórico detalhado é propagado assincronamente para o Cassandra. Isso impede o inchaço (*table bloat*) das tabelas SQL com milhões de linhas históricas.
+* **Arquitetura Baseada em LSM-Tree:** O Cassandra grava sequencialmente em memória (*MemTable*) e *CommitLog*, fazendo despejos periódicos em disco (*SSTables*). Isso confere velocidade de escrita praticamente imune a gargalos de concorrência e travamentos de linha.
+* **Expurgo Automático com TTL Nativo:** Logs e rastros de navegação podem ser gravados com validade pré-definida (ex: 90 ou 180 dias via `USING TTL`). O descarte é feito nativamente durante a compactação de disco, eliminando *jobs* destrutivos de `DELETE FROM logs WHERE created_at < ...` que travam bancos relacionais.
+
+### 1.5 A Regra de Ouro do E-commerce: Snapshots Imutáveis de Pedidos
 > [!IMPORTANT]
 > **Nunca confie em referências vivas ao catálogo para exibir pedidos concluídos.**
 > Quando um cliente finaliza um pedido, o banco relacional **NÃO** deve apenas armazenar o `product_id` e consultar o MongoDB para exibir o nome e o preço no histórico de compras.
@@ -61,7 +67,7 @@ A decisão entre embutir (*embed*) ou referenciar (*reference*) segue regras mat
 | **1 : 1** | Produto ➔ Dimensões de Frete | **Embed** | Sempre consultados juntos; evita consultas adicionais. |
 | **1 : Poucos** | Produto ➔ Variantes / SKUs / Imagens | **Embed** | O número de variantes raramente passa de 50. Carregamento em uma única operação. |
 | **1 : Muitos** | Produto ➔ Avaliações / Perguntas | **Híbrido (Subset)** | Avaliações podem crescer indefinidamente; risco de violar o limite de 16MB. |
-| **1 : Milhões** | Produto ➔ Histórico de Preços / Logs de Visualização | **Referência Inversa** | O registro filho guarda o `product_id` em coleção dedicada; nunca embutir no pai. |
+| **1 : Milhões** | Produto ➔ Histórico de Preços / Logs de Visualização | **Referência Inversa / Cassandra** | No MongoDB, guarda o `product_id` em coleção dedicada; em altíssima escala (logs/cliques contínuos), desloque para o **Cassandra**. |
 
 ### 2.2 Padrões de Design de Schema (Design Patterns)
 
@@ -179,11 +185,98 @@ db.products.updateOne(
 
 ---
 
-## 3. Sincronização e Consistência entre Bancos
+## 3. Modelagem Orientada a Consultas no Apache Cassandra (Histórico & Logs)
+
+Diferente do modelo relacional (onde se normalizam dados) e do documental (onde se modela em torno de agregados e da UI), no **Apache Cassandra / ScyllaDB** a regra cardeal é **Query-Driven Modeling**: cria-se uma tabela específica para atender com perfeição a cada padrão de consulta do sistema, com leitura direta $O(1)$ sem joins ou ordenações em tempo de execução.
+
+### 3.1 Anatomia da Chave Primária: Partition Key vs. Clustering Key
+A chave primária no Cassandra é dividida em dois componentes com funções bem distintas:
+
+```sql
+PRIMARY KEY ((partition_key), clustering_column_1, clustering_column_2)
+```
+1. **Partition Key (Chave de Partição):** Determina **em qual nó do cluster** o dado será gravado via hash algorítmico (*Murmur3Partitioner*). Consultas que especificam a chave de partição vão direto ao nó responsável sem fazer broadcast na rede.
+2. **Clustering Key (Chave de Agrupamento/Ordenação):** Determina **a ordem física na qual as linhas são gravadas no disco (*SSTable*)** dentro daquela partição.
+
+### 3.2 Tabela de Histórico e Extrato de Transações Financeiras (Ledger)
+Quando um cliente acessa seu extrato financeiro, o sistema precisa exibir as transações ordenadas cronologicamente do lançamento mais recente para o mais antigo de forma instantânea:
+
+```sql
+CREATE KEYSPACE IF NOT EXISTS banking WITH replication = {
+    'class': 'NetworkTopologyStrategy', 
+    'datacenter1': 3
+};
+
+CREATE TABLE banking.account_transactions (
+    account_id uuid,
+    created_at timestamp,
+    transaction_id timeuuid, -- Ordenado por tempo (semelhante ao UUIDv7)
+    order_id uuid,
+    transaction_type text,   -- 'ORDER_PAYMENT', 'REFUND', 'CASHBACK'
+    amount decimal,
+    currency text,
+    balance_after decimal,
+    description text,
+    metadata map<text, text>,
+    PRIMARY KEY ((account_id), created_at, transaction_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, transaction_id DESC);
+```
+
+* **Vantagem de Performance:** Ao executar `SELECT * FROM banking.account_transactions WHERE account_id = ? LIMIT 20;`, o Cassandra executa um *seek* sequencial imediato no início do arquivo de partição e devolve os 20 registros sem gastar nenhum ciclo de CPU ordenando dados em memória.
+* **Imutabilidade:** Registros financeiros são puramente cumulativos (*Append-Only*). Estornos e reembolsos geram **novas linhas** de transação em vez de atualizar lançamentos anteriores.
+
+### 3.3 Logs de Auditoria e Telemetria com Expurgo Automático (TTL Nativo)
+Para rastrear o ciclo de vida de pedidos, alterações de status e eventos de segurança (ex: tentativas de login suspeitas ou acessos administrativos), utilizamos **Time-to-Live (TTL)** nativo por registro.
+
+```sql
+CREATE KEYSPACE IF NOT EXISTS audit WITH replication = {
+    'class': 'NetworkTopologyStrategy', 
+    'datacenter1': 3
+};
+
+CREATE TABLE audit.entity_audit_logs (
+    entity_type text,        -- 'ORDER', 'USER', 'INVENTORY'
+    entity_id uuid,
+    occurred_at timestamp,
+    event_id timeuuid,
+    actor_id uuid,
+    action text,             -- 'STATUS_CHANGED', 'PRICE_UPDATED'
+    payload_diff text,       -- JSON com diff antes/depois
+    ip_address inet,
+    PRIMARY KEY ((entity_type, entity_id), occurred_at, event_id)
+) WITH CLUSTERING ORDER BY (occurred_at DESC, event_id DESC);
+```
+
+#### Gravação com Expiração Automática (Exemplo: 90 dias):
+```sql
+-- Grava o evento com TTL de 90 dias (7.776.000 segundos)
+INSERT INTO audit.entity_audit_logs (
+    entity_type, entity_id, occurred_at, event_id, actor_id, action, payload_diff, ip_address
+) VALUES (
+    'ORDER', 
+    018e3a2b-7c1e-7f32-8df2-36c57f5c9001, 
+    toTimestamp(now()), 
+    now(), 
+    018e3a35-1a2b-7c3d-8e4f-5a6b7c8d9e0f, 
+    'ORDER_STATUS_CHANGED', 
+    '{"from": "PAYMENT_CONFIRMED", "to": "DISPATCHED"}', 
+    '192.168.1.100'
+) USING TTL 7776000;
+```
+* **Eliminação de Jobs de Limpeza:** Não é necessário rodar scripts agendados com `DELETE FROM ...`. O Cassandra marca internamente o dado como expirado e o libera automaticamente nas etapas normais de compactação das SSTables.
+
+### 3.4 Armadilhas e Boas Práticas no Apache Cassandra
+* **Evite Partições Gigantes (*Hot Partitions*):** Uma partição individual nunca deve ultrapassar 100MB de tamanho ou 100.000 linhas. Para entidades com volume brutal de eventos (ex: sensores ou logs globais), particione por bucket temporal, como `((entity_id, year_month), occurred_at)`.
+* **Cuidado com Tombstones (*Anti-pattern de Deletes/Updates*):** No Cassandra, executar `DELETE` ou `UPDATE` frequente cria marcadores de exclusão (*tombstones*). Se uma consulta precisar pular mais de 1.000 tombstones, a performance entra em colapso e o banco emite alertas críticos (`WARN/ERROR: Read X live rows and Y tombstone cells`). Cassandra deve ser usado para dados **imutáveis**.
+* **Não use Índices Secundários (`ALLOW FILTERING`):** Índices secundários no Cassandra sem a chave de partição forçam uma varredura em todos os nós do cluster (*full cluster scan*). Se você precisa consultar por outro critério, crie uma **tabela secundária desnormalizada** dedicada para essa consulta.
+
+---
+
+## 4. Sincronização e Consistência entre Bancos
 
 O desafio central da persistência poliglota é manter a coerência de dados entre os bancos sem criar acoplamento rígido ou falhas parciais.
 
-### 3.1 O Problema do Dual-Write (Por que NUNCA fazer na API)
+### 4.1 O Problema do Dual-Write (Por que NUNCA fazer na API)
 > [!WARNING]
 > **Antipadrão Crítico:** Executar salvamentos sequenciais no controller ou service da aplicação:
 > ```php
@@ -193,16 +286,16 @@ O desafio central da persistência poliglota é manter a coerência de dados ent
 > ```
 > O resultado é um **estado inconsistente**: o pedido foi criado, mas o catálogo no MongoDB continua mostrando o estoque anterior. Transações distribuídas de duas fases (2PC/XA) são lentas e frágeis em ambientes distribuídos modernos.
 
-### 3.2 Identificadores Universais: Por que Adotar UUIDv7
+### 4.2 Identificadores Universais: Por que Adotar UUIDv7
 Nunca utilize IDs auto-incrementais (`1, 2, 3...`) para cruzar dados entre bancos distintos.
 * **Por que não sequenciais:** Provocam colisão de IDs entre ambientes, revelam métricas comerciais via URLs e impedem a geração prévia do ID na aplicação.
 * **Por que não ObjectId puro do MongoDB:** O `ObjectId` é exclusivo do ecossistema MongoDB e pouco natural em tabelas relacionais do SQL.
 * **A Recomendação Canônica: UUIDv7:**
   - O **UUIDv7** (RFC 9562) é ordenado temporalmente (*time-ordered*) nos primeiros bits.
-  - Oferece excelente desempenho em índices **B-Tree** do PostgreSQL/MariaDB (evita fragmentação de páginas de disco gerada pelo UUIDv4 aleatório).
-  - É gerado diretamente pelo backend PHP antes de qualquer persistência, servindo de chave comum entre SQL, MongoDB e Redis.
+  - Oferece excelente desempenho em índices **B-Tree** do PostgreSQL/MariaDB (evita fragmentação de páginas de disco gerada pelo UUIDv4 aleatório) e mapeia diretamente para o tipo `timeuuid` do Cassandra.
+  - É gerado diretamente pelo backend PHP antes de qualquer persistência, servindo de chave comum entre SQL, MongoDB, Redis e Cassandra.
 
-### 3.3 A Solução: Transactional Outbox Pattern com RabbitMQ
+### 4.3 A Solução: Transactional Outbox Pattern com RabbitMQ
 A forma mais confiável e testada em escala para sincronizar bancos heterogêneos sem perda de dados é o **Transactional Outbox Pattern**:
 
 ```
@@ -228,23 +321,26 @@ Fluxo Transacional com Outbox:
                                   Publica mensagem
                                             ▼
                                [Message Broker: RabbitMQ]
-                                            │
-                                            ▼
-                                [Catalog Sync Consumer]
-                                            │
-                                            ▼
-                                  [MongoDB: Catálogo]
-                         (Atualiza flag "in_stock" e variantes)
+                                      │           │
+                     ┌────────────────┘           └───────────────┐
+                     ▼                                            ▼
+         [Catalog Sync Consumer]                      [Audit & Ledger Consumer]
+                     │                                            │
+                     ▼                                            ▼
+            [MongoDB: Catálogo]                         [Cassandra / ScyllaDB]
+   (Atualiza flag "in_stock" / Redis)              (Grava Extrato Imutável & Logs)
 ```
 
 1. Na mesma transação SQL que debita o estoque e grava o pedido, grava-se uma linha na tabela `outbox_events`.
 2. Como a gravação da outbox ocorre dentro da transação local do banco relacional, **é garantido** que o evento só existe se o pedido for commitado.
 3. Um processo em segundo plano (*Outbox Relay / Debezium CDC*) lê a tabela e publica no **RabbitMQ**.
-4. Um consumidor (*Worker*) lê do RabbitMQ e atualiza as informações necessárias no **MongoDB** ou invalida chaves no **Redis** de forma assíncrona, tolerante a falhas e com idempotência.
+4. Consumidores dedicados (*Workers*) leem do RabbitMQ:
+   - **Catalog Worker:** Atualiza o **MongoDB** e invalida chaves no **Redis**.
+   - **Audit & Ledger Worker:** Grava a linha imutável no **Cassandra** para extrato financeiro e auditoria com tolerância a falhas e garantia de idempotência.
 
 ---
 
-## 4. Diagrama de Arquitetura da Solução (Mermaid)
+## 5. Diagrama de Arquitetura da Solução (Mermaid)
 
 Este diagrama representa o fluxo unificado de dados em uma arquitetura limpa com Persistência Poliglota:
 
@@ -276,30 +372,39 @@ graph TD
         OutboxMapper --> PostgreSQL
     end
 
+    %% Contexto de Histórico & Auditoria
+    subgraph Context_Historico [Contexto de Histórico, Auditoria & Logs]
+        Controllers -->|Consultas de Extrato/Logs| HistoryRepo[Transaction History Repository]
+        HistoryRepo -->|CQL Driver| Cassandra[(Apache Cassandra / ScyllaDB: Histórico & Logs)]
+    end
+
     %% Mensageria e Sincronização Assíncrona
     subgraph Mensageria_Assincrona [Garantia de Entrega & Sincronização]
         PostgreSQL -.->|Leitura de Eventos Pendentes| OutboxRelay[Outbox Relay Service]
         OutboxRelay -->|AMQP Publish| RabbitMQ{{RabbitMQ Broker}}
         RabbitMQ -->|Consumo Assíncrono| CatalogWorker[Sync Catalog Worker PHP]
+        RabbitMQ -->|Consumo Assíncrono| AuditWorker[Sync Audit & History Worker PHP]
         CatalogWorker -->|Atualiza Disponibilidade| MongoDB
         CatalogWorker -->|Invalida Cache| Redis
+        AuditWorker -->|Grava Lançamento Imutável| Cassandra
     end
 
     %% Estilos visuais
     style MongoDB fill:#47A248,stroke:#2d692e,stroke-width:2px,color:#fff
     style PostgreSQL fill:#336791,stroke:#1d3b54,stroke-width:2px,color:#fff
     style Redis fill:#DC382D,stroke:#8b221a,stroke-width:2px,color:#fff
+    style Cassandra fill:#1287A5,stroke:#0d5e73,stroke-width:2px,color:#fff
     style RabbitMQ fill:#FF6600,stroke:#aa4400,stroke-width:2px,color:#fff
     style UoW fill:#6f42c1,stroke:#482880,stroke-width:2px,color:#fff
 ```
 
 ---
 
-## 5. Implementação Prática em PHP 8.2+ (Clean Architecture)
+## 6. Implementação Prática em PHP 8.2+ (Clean Architecture)
 
-Abaixo estão os padrões concretos de código para integrar o MongoDB respeitando o isolamento entre camadas de Domínio e Infraestrutura presentes no projeto.
+Abaixo estão os padrões concretos de código para integrar o MongoDB e o Cassandra respeitando o isolamento entre camadas de Domínio e Infraestrutura presentes no projeto.
 
-### 5.1 Interface de Domínio: `ProductRepositoryInterface`
+### 6.1 Interface de Domínio: `ProductRepositoryInterface`
 O domínio define o contrato puro sem acoplamento a bibliotecas externas:
 
 ```php
@@ -320,7 +425,7 @@ interface ProductRepositoryInterface
 }
 ```
 
-### 5.2 O Data Mapper: `MongoProductDataMapper`
+### 6.2 O Data Mapper: `MongoProductDataMapper`
 Responsável pela tradução bidirecional entre o Objeto de Domínio e o documento BSON/Array do MongoDB:
 
 ```php
@@ -386,7 +491,7 @@ class MongoProductDataMapper
 }
 ```
 
-### 5.3 Implementação do Repositório: `MongoProductRepository`
+### 6.3 Implementação do Repositório: `MongoProductRepository`
 Utiliza a biblioteca oficial `mongodb/mongodb` mantendo o controle otimista de versão:
 
 ```php
@@ -457,15 +562,120 @@ class MongoProductRepository implements ProductRepositoryInterface
 }
 ```
 
-### 5.4 Registro no Container de Injeção de Dependências (PHP-DI)
+### 6.4 Interface de Domínio: `TransactionHistoryRepositoryInterface`
+Contrato para persistência e consulta do extrato financeiro histórico:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Finance\Repositories;
+
+use App\Domain\Finance\Entities\AccountTransaction;
+
+interface TransactionHistoryRepositoryInterface
+{
+    /**
+     * @return list<AccountTransaction>
+     */
+    public function findByAccountId(string $accountId, int $limit = 20): array;
+
+    public function record(AccountTransaction $transaction): void;
+}
+```
+
+### 6.5 Implementação do Repositório no Cassandra: `CassandraTransactionHistoryRepository`
+Utiliza o driver CQL para operações de alta velocidade preparadas (*Prepared Statements*):
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Persistence\Repositories;
+
+use App\Domain\Finance\Entities\AccountTransaction;
+use App\Domain\Finance\Repositories\TransactionHistoryRepositoryInterface;
+use Cassandra\Session;
+use Cassandra\Uuid;
+use Cassandra\Timeuuid;
+use Cassandra\Timestamp;
+use Cassandra\Decimal;
+
+class CassandraTransactionHistoryRepository implements TransactionHistoryRepositoryInterface
+{
+    public function __construct(
+        private readonly Session $session
+    ) {}
+
+    public function findByAccountId(string $accountId, int $limit = 20): array
+    {
+        $cql = "SELECT * FROM banking.account_transactions WHERE account_id = ? LIMIT ?";
+        $prepared = $this->session->prepare($cql);
+        $result = $this->session->execute($prepared, [
+            'arguments' => [new Uuid($accountId), $limit]
+        ]);
+
+        $transactions = [];
+        foreach ($result as $row) {
+            $transactions[] = new AccountTransaction(
+                accountId: (string) $row['account_id'],
+                transactionId: (string) $row['transaction_id'],
+                orderId: isset($row['order_id']) ? (string) $row['order_id'] : null,
+                transactionType: (string) $row['transaction_type'],
+                amount: (float) (string) $row['amount'],
+                currency: (string) $row['currency'],
+                balanceAfter: (float) (string) $row['balance_after'],
+                description: (string) $row['description'],
+                createdAt: (int) $row['created_at']->time()
+            );
+        }
+
+        return $transactions;
+    }
+
+    public function record(AccountTransaction $transaction): void
+    {
+        $cql = <<<CQL
+            INSERT INTO banking.account_transactions (
+                account_id, created_at, transaction_id, order_id, 
+                transaction_type, amount, currency, balance_after, description
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        CQL;
+
+        $prepared = $this->session->prepare($cql);
+        $this->session->execute($prepared, [
+            'arguments' => [
+                new Uuid($transaction->getAccountId()),
+                new Timestamp($transaction->getCreatedAt()),
+                new Timeuuid($transaction->getTransactionId()),
+                $transaction->getOrderId() ? new Uuid($transaction->getOrderId()) : null,
+                $transaction->getTransactionType(),
+                new Decimal((string) $transaction->getAmount()),
+                $transaction->getCurrency(),
+                new Decimal((string) $transaction->getBalanceAfter()),
+                $transaction->getDescription()
+            ]
+        ]);
+    }
+}
+```
+
+### 6.6 Registro no Container de Injeção de Dependências (PHP-DI)
 No arquivo de configuração de dependências (`backend/config/container.php`):
 
 ```php
 use App\Domain\Catalog\Repositories\ProductRepositoryInterface;
+use App\Domain\Finance\Repositories\TransactionHistoryRepositoryInterface;
 use App\Infrastructure\Persistence\Repositories\MongoProductRepository;
+use App\Infrastructure\Persistence\Repositories\CassandraTransactionHistoryRepository;
 use MongoDB\Client as MongoClient;
+use Cassandra\Cluster;
+use Cassandra\Session as CassandraSession;
 
 return [
+    // MongoDB Client
     MongoClient::class => function () {
         $uri = sprintf(
             'mongodb://%s:%s@%s:%s/%s?authSource=admin',
@@ -486,28 +696,48 @@ return [
 
         return new MongoProductRepository($collection, $mapper);
     },
+
+    // Apache Cassandra / ScyllaDB Session
+    CassandraSession::class => function () {
+        $cluster = Cluster::build()
+            ->withContactPoints(explode(',', $_ENV['CASSANDRA_HOSTS'] ?? '127.0.0.1'))
+            ->withPort((int) ($_ENV['CASSANDRA_PORT'] ?? 9042))
+            ->withCredentials($_ENV['CASSANDRA_USER'] ?? 'cassandra', $_ENV['CASSANDRA_PASSWORD'] ?? 'cassandra')
+            ->build();
+
+        return $cluster->connect('banking');
+    },
+
+    TransactionHistoryRepositoryInterface::class => function (\Psr\Container\ContainerInterface $c) {
+        return new CassandraTransactionHistoryRepository($c->get(CassandraSession::class));
+    },
 ];
 ```
 
 ---
 
-## 6. Checklist de Produção (Production Readiness)
+## 7. Checklist de Produção (Production Readiness)
 
 Antes de promover uma arquitetura poliglota para produção, audite os seguintes itens:
 
-* [ ] **Replica Set Ativo:** O MongoDB **deve** operar como Replica Set (mínimo de 3 nós: primário, secundário e árbitro/secundário) mesmo em ambiente de desenvolvimento local, pois recursos como transações e *Change Streams* exigem replica set ativo.
+* [ ] **MongoDB Replica Set Ativo:** O MongoDB **deve** operar como Replica Set (mínimo de 3 nós: primário, secundário e árbitro/secundário) mesmo em ambiente de desenvolvimento local, pois recursos como transações e *Change Streams* exigem replica set ativo.
 * [ ] **Write Concern 'majority':** Operações críticas no MongoDB devem configurar `writeConcern: { w: 'majority', j: true }` para garantir persistência no disco da maioria dos nós antes da confirmação.
 * [ ] **Índices Cobrindo Queries:** Executar `.explain("executionStats")` nas principais consultas de catálogo para garantir que não haja `COLLSCAN` (varredura completa da coleção).
+* [ ] **Topologia e Quórum do Cassandra:** Configurar `NetworkTopologyStrategy` com fator de replicação (`RF >= 3`) em produção e usar `Consistency Level: LOCAL_QUORUM` para leituras e escritas sem risco de inconsistência em caso de queda de nós.
+* [ ] **Monitoramento de Tombstones:** Configurar alertas no Cassandra/ScyllaDB para queries que varrem mais de 1.000 tombstones, prevenindo degradação por deleções inadequadas.
+* [ ] **Expurgo via TTL Nativo:** Garantir que tabelas de logs, telemetria e eventos efêmeros utilizem `TTL` nativo na inserção, eliminando rotinas de exclusão programadas com `DELETE`.
+* [ ] **Partições Saudáveis:** Monitorar para que nenhuma partição no Cassandra ultrapasse 100MB de disco ou 100.000 células.
 * [ ] **Limpeza de Outbox:** Implementar expiração ou particionamento na tabela `outbox_events` do SQL para remover eventos processados há mais de 30 dias.
 * [ ] **Idempotência nos Consumidores:** Garantir que todos os *workers* de mensageria RabbitMQ possam processar o mesmo evento mais de uma vez sem corromper o estado final (*At-Least-Once Delivery*).
-* [ ] **Auditoria de Conexões (Connection Pooling):** Manter instâncias únicas (*Singleton*) de clientes de conexão (`MongoClient`, `PDO`, `RedisClient`) gerenciadas pelo container de DI para evitar esgotamento de *file descriptors* e portas no servidor.
+* [ ] **Auditoria de Conexões (Connection Pooling):** Manter instâncias únicas (*Singleton*) de clientes de conexão (`MongoClient`, `PDO`, `RedisClient`, `Cassandra\Session`) gerenciadas pelo container de DI para evitar esgotamento de *file descriptors* e portas no servidor.
 
 ---
 
-## 7. Referências Técnicas e Leitura Complementar
+## 8. Referências Técnicas e Leitura Complementar
 
 1. **Martin Fowler** – *Patterns of Enterprise Application Architecture* (Data Mapper, Repository, Unit of Work, Identity Map).
 2. **Martin Kleppmann** – *Designing Data-Intensive Applications* (Partições, Consistência Eventual, Dual-Write e Transações Distribuídas).
-3. **MongoDB Official Documentation** – *Building with Patterns: A Summary of Common Schema Design Patterns* (Attribute Pattern, Subset Pattern, Bucket Pattern).
-4. **Chris Richardson** – *Microservices Patterns* (Transactional Outbox Pattern e Event-Driven Architecture).
-5. **RFC 9562** – *Universally Unique Identifiers (UUIDv7 Specification)*.
+3. **Jeff Carpenter & Eben Hewitt** – *Cassandra: The Definitive Guide (Distributed Data at Web Scale)* (O'Reilly).
+4. **MongoDB Official Documentation** – *Building with Patterns: A Summary of Common Schema Design Patterns* (Attribute Pattern, Subset Pattern, Bucket Pattern).
+5. **Chris Richardson** – *Microservices Patterns* (Transactional Outbox Pattern e Event-Driven Architecture).
+6. **RFC 9562** – *Universally Unique Identifiers (UUIDv7 Specification)*.
