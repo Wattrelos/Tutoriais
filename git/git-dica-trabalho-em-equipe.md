@@ -109,15 +109,29 @@ Se dois alunos decidem mexer no mesmo arquivo (por exemplo, ambos editando `app.
 ### Como o Kanban e a Divisão de Tarefas Ajudam:
 
 1. **Evita a sobreposição no mesmo arquivo/módulo:**
-   * Aluno A assume o cartão: *"Criar formulário de login (`login.html` / `login.css`)"*.
-   * Aluno B assume o cartão: *"Criar model de usuários e conexão com banco (`User.js` / `db.js`)"*.
-   * Como cada um atua em partes isoladas do projeto, o Git junta tudo automaticamente sem nenhum conflito.
+   * Quando cada membro atua em fluxos isolados, o Git junta tudo automaticamente sem nenhum conflito.
 2. **Definição clara de "Dono da Tarefa" (WIP - Work in Progress):**
    * No quadro Kanban (seja no **Trello**, **GitHub Projects** ou post-its), cada cartão em *“Em Progresso”* deve ter um único responsável.
-   * Dois alunos não devem atuar na mesma tarefa simultaneamente (a menos que seja em *Pair Programming*, onde compartilham a mesma tela/máquina).
+   * Dois alunos não devem atuar na mesma tarefa simultaneamente (a menos que façam *Pair Programming*, compartilhando a mesma tela/máquina).
 3. **Casos em que ambos precisam mexer no mesmo arquivo:**
    * Arquivos centrais (como rotas, `package.json`, configurações ou menu de navegação) costumam sofrer alterações de todos.
    * **A regra aqui é o alinhamento rápido:** *"Vou adicionar a dependência X no `package.json` agora, já vou commitar e subir para você poder puxar antes de instalar a sua"*.
+
+### 🍰 Mundo Real: Fatias Horizontais vs. Fatias Verticais (*Vertical Slice Architecture*)
+
+Na faculdade e em cursos, é muito comum equipes dividirem as tarefas em **camadas horizontais**:
+* ❌ *Aluno A faz todo o front-end; Aluno B faz todo o back-end; Aluno C faz todo o banco de dados.*
+* **O problema no Git:** Aluno A e Aluno B ficam bloqueados esperando o outro, alteram arquivos gigantescos de uma só vez e, no dia de juntar tudo (*merge*), o conflito é quase inevitável porque nada foi testado de ponta a ponta.
+
+Na vida real, times ágeis de alta performance preferem dividir por **Fatias Verticais (*Vertical Slices*)** baseadas em **Casos de Uso**:
+* Cada cartão do Kanban representa **uma funcionalidade completa**, do visual ao banco de dados:
+  * 🍕 **Fatia 1 (Aluno A):** *"Caso de Uso: Cadastrar Usuário"* (cria a tela de cadastro, a rota de cadastro, validação e salvamento no banco).
+  * 🍕 **Fatia 2 (Aluno B):** *"Caso de Uso: Listar Produtos"* (cria a tela de listagem, rota de busca e consulta ao banco).
+
+**Por que fatias verticais mudam o jogo no Git e no trabalho em equipe?**
+* **Independência quase total:** O Aluno A mexe em `views/cadastro`, `controllers/cadastro` e `models/user`. O Aluno B mexe em `views/produtos`, `controllers/produtos` e `models/produto`. Como os arquivos são distintos, os commits e *merges* ocorrem de forma 100% suave.
+* **Entregas funcionais e contínuas:** Em vez de esperar semanas para ver uma tela funcionando com a API, cada fatia entregue já agrega valor real ao projeto.
+* **Branches curtas e objetivas:** Cada caso de uso vira uma branch própria (`feature/cadastro-usuario`), testada, revisada e integrada à `main` rapidamente.
 
 ---
 
