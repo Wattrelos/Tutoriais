@@ -1,0 +1,121 @@
+@startuml
+autonumber
+<style>
+root {
+  FontName "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+  FontSize 12
+  FontColor #2C3E50
+}
+document {
+  BackgroundColor white
+}
+sequenceDiagram {
+  arrow {
+    LineColor #37474F
+    LineThickness 1.2
+    FontColor #263238
+    FontSize 11
+  }
+  actor {
+    RoundCorner 12
+    FontStyle bold
+  }
+  participant {
+    RoundCorner 10
+    BorderThickness 1.5
+    Padding 8
+    FontStyle bold
+  }
+  divider {
+    LineColor #1E88E5
+    LineThickness 1.5
+    FontColor #0D47A1
+    FontSize 12
+    FontStyle bold
+    BackgroundColor #ACD6F4
+  }
+  group {
+    LineColor #78909C
+    LineThickness 1.2
+    FontColor #37474F
+    FontSize 11
+    FontStyle bold
+    BackgroundColor #F8FAFC
+    HeaderBackgroundColor #D8E2ED
+  }
+  note {
+    LineColor #FFA000
+    BackgroundColor #FFF8E1
+    FontColor #E65100
+    FontSize 11
+    RoundCorner 8
+  }
+  lifeLine {
+    LineColor #1C9F27
+  }
+}
+</style>
+
+skinparam BoxPadding 10
+skinparam ParticipantPadding 15
+skinparam backgroundColor #F8F8F8
+
+actor "Desenvolvedor" as Dev #E3F2FD
+participant "Kanban\n(Trello/Jira)" as Board #FFF8E1
+participant "Repositório Local\n(Git)" as Local #FBE9E7
+participant "Repositório Remoto\n(GitHub)" as Remoto #EDE7F6
+actor "Equipe / Revisores" as Equipe #E8F5E9
+
+== Fase 1: Planejamento & Alinhamento ==
+loop Escolha de Tarefa
+    Dev -> Board : Verifica cartões disponíveis
+    alt Já em andamento por outro dev
+        Dev -> Equipe : Alinha com o colega ou escolhe outra tarefa
+    else Disponível
+        Dev -> Board : Assume cartão e move para 'Em Progresso'
+    end
+end
+
+== Fase 2: Configuração do Ambiente ==
+Dev -> Local : git checkout main
+Dev -> Local : git pull origin main
+Remoto --> Local : Baixa a versão mais recente
+Dev -> Local : git checkout -b feature/minha-tarefa
+
+== Fase 3: Desenvolvimento Local ==
+loop Ciclo de Codificação
+    Dev -> Local : Coda / Faz alterações
+    Dev -> Local : git add .
+    Dev -> Local : git commit -m "feat: ..."
+end
+
+== Fase 4: Sincronização & Envio ==
+Dev -> Local : git pull (Verifica novidades na main)
+alt Houve Conflito? (Sim)
+    Local --> Dev : Alerta de conflito!
+    Dev -> Local : Resolve conflitos manualmente
+    Dev -> Local : git add . && git commit -m "merge: resolve conflitos"
+else Não houve conflito
+    note over Local : Pronto para envio
+end
+
+Dev -> Remoto : git push origin feature/minha-tarefa
+Dev -> Remoto : Abre Pull Request / Merge Request
+
+== Fase 5: Revisão de Código ==
+Remoto -> Equipe : Notifica sobre o PR
+loop Code Review
+    Equipe -> Remoto : Analisa o código
+    alt Reprovado
+        Equipe --> Dev : Solicita alterações
+        Dev -> Local : Volta a codar e faz novos commits/push
+    else Aprovado
+        Equipe -> Remoto : Aprova o PR
+    end
+end
+
+Remoto -> Remoto : Realiza o Merge na branch principal
+Dev -> Board : Move cartão para 'Concluído'
+note over Dev, Board : Fim do ciclo!
+
+@endum

@@ -4,6 +4,30 @@ Trabalhar em equipe com Git pode parecer assustador no início, principalmente q
 
 ---
 
+```mermaid
+flowchart TD
+    A[Início: Nova Tarefa] --> B{Verificar Kanban / Trello}
+    B -->|Já em andamento por outro dev?| C[Alinhar com o colega ou escolher outra tarefa]
+    C --> B
+    B -->|Disponível| D[Assumir cartão e mover para 'Em Progresso']
+    D --> E[Criar e entrar na branch: git checkout -b feature/minha-tarefa]
+    E --> F[Garantir base atualizada: git pull origin main]
+    F --> G[Codar / Fazer alterações]
+    G --> H[Adicionar arquivos: git add .]
+    H --> I[Salvar localmente: git commit -m 'feat: ...']
+    I --> J[Baixar novidades remotas: git pull]
+    J --> K{Houve conflito?}
+    K -->|Sim| L[Resolver conflitos e commitar o merge]
+    K -->|Não| M[Enviar ao remoto: git push origin feature/minha-tarefa]
+    L --> M
+    M --> N[Abrir Pull Request / Merge Request]
+    N --> O{Code Review aprovado?}
+    O -->|Não| G
+    O -->|Sim| P[Merge na branch principal]
+    P --> Q[Mover cartão no Kanban para 'Concluído']
+    Q --> R[Fim do ciclo]
+```
+
 ## 🎯 Regra de Ouro: O Fluxo Diário de Trabalho
 
 Muitos iniciantes acreditam que devem baixar as alterações (`git pull`) antes de salvar o seu trabalho. **Isso é um equívoco perigoso!**

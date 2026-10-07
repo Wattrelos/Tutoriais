@@ -1,3 +1,9 @@
+* **FATEC-FV Faculdade de Tecnologia de Ferraz de Vasconcelos**
+* **ADS - Análise e Desenvolvimento de Sistemas**
+* **Teste de Software**
+* **Professor:** Alexander Bastos
+* **Aluno:** Josias Sobrinho
+
 # 🧪 Guia Completo da Suíte de Testes, Qualidade e Ferramentas para Agentes em PHP
 
 > **Contexto:** Este guia complementa o tutorial [🤖 Ferramentas como Superpoderes para Agentes de IA](../agents/ferramentas-que-ajudam-agents.md) e adapta a suíte de testes e ferramentas de análise estática para o nosso ambiente real de desenvolvimento (**Debian 13**, **PHP 8.4 runtime / 8.2+**, **Slim 4 / beta-engine** e **Google Antigravity**).
