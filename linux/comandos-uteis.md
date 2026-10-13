@@ -95,3 +95,12 @@ Se o redis-server.service estiver carregado, para verificar se o Redis está des
 ```bash
 sudo systemctl is-failed redis-server
 ``` 
+
+
+
+# Mostrar o log de um site Nginx:
+
+```bash
+# Mostrar o log de um site Nginx:
+sudo tail -f /var/log/nginx/nome_do_site.error.log
+```
