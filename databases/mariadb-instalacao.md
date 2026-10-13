@@ -39,7 +39,30 @@ EXIT;
 ```
 # PHPMyAdmin no servidor Ngnix
 
-- Se for usar phpMyAdmin no servidor Nginx, recomendo criar um arquivo de configuração separado para o phpMyAdmin no Nginx, pois é a melhor prática. Assim, ele fica totalmente independente do seu projeto agsonhos ou de qualquer outro site que você decida colocar ou tirar do ar no futuro.
+## 1. Instalar o PHPMyAdmin no VPS:
+
+```bash
+sudo apt update
+sudo apt install phpmyadmin
+```
+
+# Instalação do PHP no VPS:
+
+```bash
+sudo apt install php8.4-{cli,fpm,mysql,mbstring,zip,gd,curl,intl} -y
+```
+
+## Instalação de extensões adicionais do PHP (Opcional):
+```bash
+sudo apt install php8.4-{bcmath,opcache,imagick} -y
+```
+
+## Reiniciar o PHP-FPM para aplicar as alterações:
+```bash
+sudo systemctl reload php8.4-fpm
+```
+
+- Se for usar phpMyAdmin no servidor Nginx, recomendo criar um arquivo de configuração separado para o phpMyAdmin no Nginx, pois é a melhor prática. Assim, ele fica totalmente independente do seu projeto ou de qualquer outro site que você decida colocar ou tirar do ar no futuro.
 - A forma mais organizada de fazer isso em um ambiente de desenvolvimento local é criar um domínio próprio para ele, como http://phpmyadmin.local.
 Aqui está o passo a passo para isolar o phpMyAdmin:
 ## 1. Criar o arquivo de configuração independente
