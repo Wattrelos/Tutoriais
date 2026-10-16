@@ -268,6 +268,7 @@ npm run lint:rust          # Roda cargo clippy no workspace
 npm run lint:rust:fix      # Aplica correções seguras do clippy
 npm run fmt:rust           # Formata código com rustfmt
 npm run audit:rust         # Varredura de segurança RUSTSEC
+npm run check:tools        # Validação do ecossistema de 8 ferramentas no Debian 13
 npm run test:all           # Roda a pirâmide completa: Nextest + Playwright + BDD
 ```
 
@@ -292,3 +293,97 @@ Ela orienta qualquer instância do agente a:
 2. Inspecionar `test-results/rust-diagnostic.md` se houver falhas.
 3. Corrigir o código usando os números exatos de linha e sugestões do compilador.
 4. Finalizar apenas quando 100% dos testes estiverem verdes e o código estiver formatado!
+
+---
+
+## 🎭 8. Setup Prático das Ferramentas de Aceitação (Cucumber.js & Playwright) no Debian 13
+
+Para que a **Tripla Pirâmide TACL** funcione em sua totalidade, as camadas de BDD (Cucumber.js) e E2E Web (Playwright Chromium) são orquestradas via Node.js/NPM convivendo em perfeita harmonia com o backend em Rust. 
+
+Em ambientes Linux / Debian 13 (Trixie) sem servidor gráfico X11 (headless / VPS), é mandatório instalar tanto os pacotes do projeto quanto as dependências nativas de SO (fontes, bibliotecas gráficas, codecs e áudio) exigidas pelo Chromium.
+
+Execute os passos abaixo diretamente na pasta raiz do projeto (`/var/www/html/Rust-e-commerce-Alpha`):
+
+### Passo 1: Inicializar o Projeto Node.js (se ainda não existir)
+
+Caso o seu projeto Rust ainda não possua um arquivo `package.json` na raiz para gerenciar as ferramentas de frontend e automação de testes:
+
+```bash
+npm init -y
+```
+
+### Passo 2: Instalar o Cucumber.js e o Playwright
+
+Instale ambos os pacotes como dependências de desenvolvimento (`--save-dev`), garantindo o registro determinístico no `package.json` e no `package-lock.json`:
+
+```bash
+npm install --save-dev @cucumber/cucumber @playwright/test
+```
+
+### Passo 3: Baixar o Chromium Headless e as Dependências do Debian 13
+
+O Playwright gerencia seus próprios binários isolados de navegador em `~/.cache/ms-playwright/`. No Debian 13, precisamos baixar o binário do Chromium e provisionar as bibliotecas compartilhadas do sistema:
+
+```bash
+# 1. Baixa o binário customizado do Chromium headless
+npx playwright install chromium
+
+# 2. Instala automaticamente via apt as dependências de sistema exigidas pelo Debian
+sudo npx playwright install-deps
+```
+
+> [!TIP]
+> Caso queira instalar todos os navegadores suportados pelo Playwright (Chromium, Firefox e WebKit), execute `npx playwright install`. No ecossistema Alpha Engine, o Chromium é o navegador canônico e padrão para toda a suíte E2E.
+
+### Passo 4: Script DevOps de Diagnóstico e Validação (`check-tools`)
+
+Para validar a integridade de todas as 8 ferramentas da pirâmide (Rust Cargo + Node.js/E2E/BDD), disponibilizamos o script unificado em [`scripts/devops/check-tools-is-installed.sh`](/scripts/devops/check-tools-is-installed.sh):
+
+```bash
+# Execução direta via npm
+npm run check:tools
+
+# Ou diretamente pelo terminal bash
+bash scripts/devops/check-tools-is-installed.sh
+```
+
+**Saída esperada no Debian 13:**
+```text
+--- Verificando ferramentas de Teste e Qualidade no Debian 13 ---
+  ✅ cargo-nextest: Instalado (cargo-nextest 0.9.148 (cd1d6d546 2026-10-07))
+  ✅ cargo-clippy: Instalado (clippy 0.1.99 (b940084d7e 2026-09-28))
+  ✅ rustfmt: Instalado (rustfmt 1.10.0-stable (b940084d7e 2026-09-28))
+  ✅ cargo-watch: Instalado (cargo-watch 8.5.3)
+  ✅ cargo-audit: Instalado (cargo-audit-audit 0.22.2)
+  ✅ Node.js: Instalado (v24.22.0)
+  ✅ Cucumber.js: Instalado (10.9.0)
+  ✅ Playwright: Instalado (Version 1.64.1)
+
+🎉 Sucesso: 8/8 ferramentas operacionais para o ciclo fechado!
+```
+
+### Passo 5: Validação Rápida Manual e Execução das Suítes
+
+Você também pode verificar os utilitários individualmente ou disparar as baterias de teste:
+
+```bash
+# Validar Cucumber.js
+npx cucumber-js --version
+
+# Validar Playwright CLI
+npx playwright --version
+npx playwright test --help
+
+# Executar a suíte BDD Gherkin
+npm run test:bdd
+
+# Executar a suíte E2E com Playwright no Chromium
+npm run test:e2e:agent
+
+# Executar a pirâmide completa de testes (Rust Cargo + BDD + E2E)
+npm run test:all
+```
+
+> [!NOTE]
+> **Atenção ao NVM no Debian 13:** Se o seu Node.js for gerenciado via NVM, certifique-se de que o PATH do shell ou subshell contenha o caminho dos binários do Node (`~/.nvm/versions/node/<versao>/bin`). O script `check-tools-is-installed.sh` já carrega o ambiente do NVM de forma automática e defensiva.
+
