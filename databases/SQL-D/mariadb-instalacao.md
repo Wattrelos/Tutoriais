@@ -37,7 +37,10 @@ GRANT ALL PRIVILEGES ON *.* TO 'nome_usuario'@'localhost' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 EXIT;
 ```
+
 # PHPMyAdmin no servidor Ngnix
+
+> [!WARNING] Só vale a pena instalar o PHPMyAdmin se for instalação local ou em um servidor PHP. Não faz sentido instalar o PHPMyAdmin em um servidor VPS com Rust, por exemplo.
 
 ## 1. Instalar o PHPMyAdmin no VPS:
 
