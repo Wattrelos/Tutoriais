@@ -172,3 +172,40 @@ Para inspecionar ações de bloqueio e liberação de IPs à medida que acontece
 ```bash
 sudo tail -f /var/log/fail2ban.log
 ```
+
+Para visualizar e listar os logs do Fail2ban no Linux, você pode consultar o arquivo de log padrão ou usar o utilitário de linha de comando do próprio serviço.
+
+1. Ler o arquivo de log diretamente
+
+O arquivo principal fica geralmente em /var/log/fail2ban.log. Use os comandos abaixo no terminal conforme sua necessidade:
+* Ver as últimas 50 linhas:
+```bash
+sudo tail -n 50 /var/log/fail2ban.log
+```
+* Acompanhar o log em tempo real:
+```bash
+sudo tail -f /var/log/fail2ban.log
+```
+* Filtrar apenas IPs banidos ou desbanidos:
+```bash
+sudo grep -E "Ban|Unban" /var/log/fail2ban.log
+```
+* Navegar pelo arquivo completo:
+```bash
+sudo less /var/log/fail2ban.log
+```
+(Pressione q para sair).
+
+2. Usar o comando journalctl (Sistemas com Systemd)
+
+Se o seu sistema não estiver gravando no arquivo tradicional ou preferir consultar o log do serviço via systemd, execute:
+* Ver os registros recentes do serviço:
+```bash
+sudo journalctl -u fail2ban
+```
+* Acompanhar em tempo real:
+```bash
+sudo journalctl -u fail2ban -f
+```
+
+
