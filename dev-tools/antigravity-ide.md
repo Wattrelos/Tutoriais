@@ -9,36 +9,13 @@ Guia passo a passo para a instalação e configuração do **Antigravity & Antig
 
 Acesse a página oficial de download:
 - **Site oficial:** [https://antigravity.google/product/antigravity-ide/](https://antigravity.google/product/antigravity-ide/)
-- Clique no botão **Download** e selecione a versão para Linux (x64).
+- Clique no botão **Download** e selecione a versão, por exemplo, para Linux (x64).
 
-Você pode escolher entre duas opções de pacote:
-1. **Pacote `.deb` (Recomendado para Debian/Ubuntu):** Instalação automática com gerenciamento de pacotes, atalhos de menu e binários configurados automaticamente.
 2. **Pacote compactado `.tar.gz`:** Instalação manual portátil (ideal para quem prefere isolar a instalação no diretório `/opt`).
 
 ---
 
-## Opção 1: Instalação via pacote `.deb` (Recomendado)
-
-Esta é a maneira mais simples e limpa de instalar no Debian, pois configura automaticamente o comando no terminal e o ícone no menu de aplicativos.
-
-1. Acesse o diretório de downloads:
-   ```bash
-   cd ~/Downloads
-   ```
-
-2. Instale o pacote utilizando o `apt` (ele cuidará da instalação e de eventuais dependências):
-   ```bash
-   sudo apt install ./antigravity*.deb
-   ```
-
-> **Pronto!** O Antigravity já estará disponível no menu de aplicativos e você também poderá executá-lo pelo terminal digitando:
-> ```bash
-> antigravity
-> ```
-
----
-
-## Opção 2: Instalação manual via arquivo compactado (`.tar.gz`)
+## Instalação manual via arquivo compactado (`.tar.gz`)
 
 Caso você tenha baixado o arquivo `.tar.gz`, siga os passos abaixo para instalar no diretório `/opt`.
 
@@ -56,7 +33,7 @@ sudo tar -xzf Antigravity*.tar.gz -C /opt/
 Para padronizar o caminho de instalação, renomeie a pasta extraída:
 
 ```bash
-sudo mv /opt/Antigravity* /opt/antigravity
+sudo mv "/opt/Antigravity IDE" /opt/antigravity
 ```
 
 ### Passo 3: Ajustar permissões
@@ -65,7 +42,7 @@ Defina o seu usuário como proprietário da pasta (para facilitar atualizações
 
 ```bash
 sudo chown -R $USER:$USER /opt/antigravity
-sudo chmod +x /opt/antigravity/bin/antigravity
+sudo chmod +x /opt/antigravity/bin/antigravity-ide
 ```
 
 ### Passo 4: Criar link simbólico para o terminal
@@ -73,7 +50,7 @@ sudo chmod +x /opt/antigravity/bin/antigravity
 Para conseguir abrir o editor em qualquer diretório pelo terminal usando `antigravity .`:
 
 ```bash
-sudo ln -sf /opt/antigravity/bin/antigravity /usr/local/bin/antigravity
+sudo ln -sf /opt/antigravity/bin/antigravity-ide /usr/local/bin/antigravity-ide
 ```
 
 ### Passo 5: Criar o ícone do sistema
@@ -99,7 +76,7 @@ Cole o seguinte conteúdo no arquivo:
 Name=Antigravity
 Comment=Experience liftoff
 GenericName=Text Editor
-Exec=/opt/antigravity/bin/antigravity %F
+Exec=/opt/antigravity/bin/antigravity-ide %F
 Icon=antigravity
 Type=Application
 StartupNotify=false
@@ -113,7 +90,7 @@ Keywords=vscode;antigravity;ide;
 Name=New Empty Window
 Name[pt_BR]=Nova Janela Vazia
 Name[es]=Nueva ventana vacía
-Exec=/opt/antigravity/bin/antigravity --new-window %F
+Exec=/opt/antigravity/bin/antigravity-ide --new-window %F
 Icon=antigravity
 ```
 
@@ -132,8 +109,5 @@ sudo update-desktop-database
 Abra o terminal e teste a inicialização abrindo a pasta atual:
 
 ```bash
-antigravity .
+antigravity-ide .
 ```
-
-
-# Como atualizar o Antigravity & Antigravity IDE
