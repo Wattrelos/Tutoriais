@@ -155,3 +155,58 @@ sudo cat /etc/wireguard/public.key
 
 * [Comparação: Tailscale vs WireGuard vs Cloudflare Tunnel](./vpn-comparision.md)
 * [Ofuscação e Hardening de SSH na VPS](../../Guia_desenvolvimento_software/seguranca/ofuscando-ssh.md)
+
+
+# Extra: Como adicionar mais um computador para gerenciamento remoto pelo WireGuard:
+
+> Para redundãncia e segurança, para não ficar sem acesso à VPS (em caso de falha do computador principal, por exemplo), é interessante ter mais de um computador configurado no WireGuard.
+Para adicionar um novo PC ao seu servidor WireGuard, você precisa criar um novo bloco [Peer] no final do arquivo de configuração da VPS e configurar o cliente no novo computador com um IP exclusivo.
+
+## 1. Gere as chaves no novo PC
+
+No novo computador que deseja conectar, abra o terminal e gere o par de chaves (pública e privada):
+```bash
+wg genkey | tee privatekey | wg pubkey > publickey
+```
+* Guarde o conteúdo de `privatekey` para usar no arquivo `wg0.conf` do novo PC.
+* Copie o conteúdo de `publickey` para colocar na VPS.
+
+## 2. Atualize a configuração da VPS
+
+Adicione um segundo bloco [Peer] ao arquivo da sua VPS (geralmente /etc/wireguard/wg0.conf), atribuindo o próximo IP disponível da sub-rede (10.10.0.3/32):
+```ini
+[Interface]
+Address = 10.10.0.1/24
+ListenPort = 51820
+PrivateKey = <CHAVE_PRIVADA_DA_VPS>
+
+[Peer]
+# Estação de trabalho Debian 13 Local
+PublicKey = <CHAVE_PUBLICA_DO_SEU_DEBIAN_LOCAL>
+AllowedIPs = 10.10.0.2/32
+
+[Peer]
+# Novo PC
+PublicKey = <CHAVE_PUBLICA_DO_NOVO_PC>
+AllowedIPs = 10.10.0.3/32
+```
+Reinicie o serviço na VPS para aplicar a mudança (ou use `wg syncconf` para não derrubar a conexão atual):
+```bash
+sudo systemctl restart wg-quick@wg0
+```
+
+## 3. Configure o cliente no Novo PC
+
+No arquivo de configuração do WireGuard do novo computador, insira:
+```ini
+[Interface]
+Address = 10.10.0.3/32
+PrivateKey = <CHAVE_PRIVADA_DO_NOVO_PC>
+
+[Peer]
+PublicKey = <CHAVE_PUBLICA_DA_VPS>
+Endpoint = <IP_PUBLICO_DA_VPS>:51820
+AllowedIPs = 10.10.0.0/24
+PersistentKeepalive = 25
+```
+

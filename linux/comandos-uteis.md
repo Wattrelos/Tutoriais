@@ -104,3 +104,24 @@ sudo systemctl is-failed redis-server
 # Mostrar o log de um site Nginx:
 sudo tail -f /var/log/nginx/nome_do_site.error.log
 ```
+
+
+## Histórico de comandos:
+
+```bash
+history
+```
+> O comando principal para ver o histórico de comandos digitados no terminal do Debian 13 (Trixie) é o history. Ele funciona da mesma forma que nas versões anteriores do Debian e na maioria das distribuições Linux que utilizam o shell Bash. 
+
+## Formas principais de usar
+
+* Listar todo o histórico. Digite `history` e pressione Enter para exibir a lista numerada de todos os comandos salvos.
+* Ver apenas os últimos comandos. Digite `history 15` (ou qualquer outro número) para mostrar apenas os últimos 15 comandos executados.
+* Filtrar um comando específico. Use `history | grep termo` para buscar comandos anteriores que contenham uma palavra específica, como `history | grep apt`.
+* Ler o arquivo bruto. O histórico fica salvo na pasta do seu usuário, então você também pode visualizá-lo com `cat ~/.bash_history`.
+
+## Atalhos úteis no teclado
+
+* Busca interativa (Ctrl + R). Pressione essas teclas e comece a digitar parte de um comando antigo para que o terminal o encontre e preencha automaticamente.
+* Navegação rápida. Use as setas para cima e para baixo do teclado para alternar entre os comandos digitados recentemente.
+* Reexecutar pelo número. Digite `!` seguido do número da linha exibida no history (por exemplo, `!42`) para rodar aquele comando novamente na hora.
