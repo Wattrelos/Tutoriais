@@ -33,9 +33,38 @@ sudo ufw delete X
 Verificação final
 
 Após remover, confira se a porta sumiu da lista de permissões ativas:
-```
+
 ```bash
 sudo ufw status
 ```
-Assim, a porta 8089 ficará acessível apenas internamente via 127.0.0.1 para o Nginx, bloqueando conexões diretas de fora do servidor.
-Você já definiu qual nova porta externa vai liberar no UFW (como a 2053, 2083 ou 8444) para o Nginx? Se quiser, já te passo o comando completo de liberação e o bloco final ajustado.
+
+# Logs:
+
+Para ver o log do UFW em tempo real, use:
+```bash
+sudo tail -f /var/log/ufw.log
+# caso o arquivo dedicado não exista:
+sudo journalctl -k -f | grep -i ufw 
+```
+
+## Comandos principais
+
+* Ver o arquivo de log: `sudo less /var/log/ufw.log`
+* Acompanhar em tempo real: `sudo tail -f /var/log/ufw.log`
+* Buscar nos logs do sistema / systemd: `sudo journalctl -k | grep -i ufw` ou `sudo grep -i ufw /var/log/syslog`
+* Filtrar bloqueios ou um IP específico: `sudo grep "UFW BLOCK" /var/log/ufw.log` ou `sudo grep "SRC=203.0.113.5" /var/log/ufw.log`
+
+## Se o log estiver vazio ou ausente
+
+* Checar status e nível de log: sudo ufw status verbose
+* Ativar o registro: sudo ufw logging on (ou defina low, medium, high ou full)
+* Verificar serviço de log: sudo service rsyslog status (se o arquivo /var/log/ufw.log não for criado)
+
+Campos mais comuns no log
+
+* UFW BLOCK / UFW ALLOW: indica se o pacote foi bloqueado ou permitido.
+* IN / OUT: interface de rede de entrada ou saída.
+* SRC / DST: endereços IP de origem e destino.
+* PROTO: protocolo (TCP, UDP, etc.).
+* SPT / DPT: porta de origem e porta de destino.
+
